@@ -1,207 +1,281 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { adminApi } from '../../api/admin.api';
-import { Button } from '../../components/common/Button';
-import { Input } from '../../components/common/Input';
-import { Card } from '../../components/common/Card';
 import type { Subject, Topic } from '../../types';
-import { Plus, ChevronRight, ChevronDown } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { Loading } from '../../components/ui/Loading';
+import { Badge } from '../../components/ui/Badge';
+import { Plus, BookOpen } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export const SubjectsPage: React.FC = () => {
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [topics, setTopics] = useState<{ [key: number]: Topic[] }>({});
-  const [expandedSubjects, setExpandedSubjects] = useState<Set<number>>(new Set());
-  const [newSubjectName, setNewSubjectName] = useState('');
-  const [newTopic, setNewTopic] = useState<{ subjectId: number | null; topicNumber: string; name: string }>({
-    subjectId: null,
-    topicNumber: '',
-    name: '',
-  });
-  const [loading, setLoading] = useState(false);
   const { login, password } = useAuthStore();
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingTopics, setLoadingTopics] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [creatingTopic, setCreatingTopic] = useState(false);
 
-  const fetchSubjects = async () => {
-    try {
-      const data = await adminApi.getSubjects(login, password);
-      setSubjects(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const fetchTopics = async (subjectId: number) => {
-    try {
-      const data = await adminApi.getTopics(subjectId, login, password);
-      setTopics((prev) => ({ ...prev, [subjectId]: data }));
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  const [newSubjectName, setNewSubjectName] = useState('');
+  const [newTopicName, setNewTopicName] = useState('');
+  const [newTopicNumber, setNewTopicNumber] = useState('');
 
   useEffect(() => {
     fetchSubjects();
   }, []);
 
-  const toggleSubject = (subjectId: number) => {
-    const newExpanded = new Set(expandedSubjects);
-    if (newExpanded.has(subjectId)) {
-      newExpanded.delete(subjectId);
-    } else {
-      newExpanded.add(subjectId);
-      if (!topics[subjectId]) {
-        fetchTopics(subjectId);
-      }
+  const fetchSubjects = async () => {
+    try {
+      const data = await adminApi.getSubjects(login, password);
+      setSubjects(data);
+    } catch (error: any) {
+      alert(error.response?.data?.detail || 'Failed to fetch subjects');
+    } finally {
+      setLoading(false);
     }
-    setExpandedSubjects(newExpanded);
+  };
+
+  const fetchTopics = async (subjectId: number) => {
+    setLoadingTopics(true);
+    try {
+      const data = await adminApi.getTopicsBySubject(subjectId, login, password);
+      setTopics(data);
+      setSelectedSubjectId(subjectId);
+    } catch (error: any) {
+      alert(error.response?.data?.detail || 'Failed to fetch topics');
+    } finally {
+      setLoadingTopics(false);
+    }
   };
 
   const handleCreateSubject = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    if (!newSubjectName.trim()) return;
+
+    setCreating(true);
     try {
-      await adminApi.createSubject(newSubjectName, login, password);
+      await adminApi.createSubject(newSubjectName.trim(), login, password);
       setNewSubjectName('');
-      fetchSubjects();
-    } catch (err: any) {
-      alert(err.message || 'Xatolik yuz berdi');
+      await fetchSubjects();
+      alert('Subject created successfully!');
+    } catch (error: any) {
+      alert(error.response?.data?.detail || 'Failed to create subject');
     } finally {
-      setLoading(false);
+      setCreating(false);
     }
   };
 
   const handleCreateTopic = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTopic.subjectId) {
-      alert('Fanni tanlang');
+    if (!newTopicName.trim() || !newTopicNumber.trim() || !selectedSubjectId) return;
+
+    const topicNum = parseInt(newTopicNumber);
+    if (isNaN(topicNum) || topicNum <= 0) {
+      alert('Topic number must be a positive number');
       return;
     }
-    setLoading(true);
+
+    setCreatingTopic(true);
     try {
       await adminApi.createTopic(
-        {
-          subject_id: newTopic.subjectId,
-          topic_number: parseInt(newTopic.topicNumber),
-          name: newTopic.name,
-        },
+        selectedSubjectId,
+        topicNum,
+        newTopicName.trim(),
         login,
         password
       );
-      setNewTopic({ subjectId: null, topicNumber: '', name: '' });
-      fetchTopics(newTopic.subjectId);
-    } catch (err: any) {
-      alert(err.message || 'Xatolik yuz berdi');
+      setNewTopicName('');
+      setNewTopicNumber('');
+      await fetchTopics(selectedSubjectId);
+      alert('Topic created successfully!');
+    } catch (error: any) {
+      alert(error.response?.data?.detail || 'Failed to create topic');
     } finally {
-      setLoading(false);
+      setCreatingTopic(false);
     }
   };
 
+  if (loading) {
+    return <Loading size="xl" text="Loading subjects..." fullScreen />;
+  }
+
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6">Fanlar va Mavzular</h1>
+    <div className="space-y-6">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">Subjects Management</h1>
+        <p className="text-gray-600">Manage subjects and their topics</p>
+      </motion.div>
 
-      {/* Yangi fan qo'shish */}
-      <Card className="mb-6">
-        <h2 className="text-xl font-semibold mb-4">Yangi fan qo'shish</h2>
-        <form onSubmit={handleCreateSubject} className="flex gap-4">
-          <Input
-            placeholder="Fan nomi"
-            value={newSubjectName}
-            onChange={(e) => setNewSubjectName(e.target.value)}
-            required
-            className="flex-1"
-          />
-          <Button type="submit" disabled={loading}>
-            <Plus className="w-4 h-4 mr-2" />
-            Qo'shish
-          </Button>
-        </form>
-      </Card>
-
-      {/* Yangi mavzu qo'shish */}
-      <Card className="mb-6">
-        <h2 className="text-xl font-semibold mb-4">Yangi mavzu qo'shish</h2>
-        <form onSubmit={handleCreateTopic} className="space-y-4">
-          <select
-            value={newTopic.subjectId || ''}
-            onChange={(e) => setNewTopic({ ...newTopic, subjectId: parseInt(e.target.value) })}
-            required
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">Fanni tanlang</option>
-            {subjects.map((subject) => (
-              <option key={subject.id} value={subject.id}>
-                {subject.name}
-              </option>
-            ))}
-          </select>
-          <div className="flex gap-4">
-            <Input
-              type="number"
-              placeholder="Mavzu raqami"
-              value={newTopic.topicNumber}
-              onChange={(e) => setNewTopic({ ...newTopic, topicNumber: e.target.value })}
-              required
-              className="w-32"
-            />
-            <Input
-              placeholder="Mavzu nomi"
-              value={newTopic.name}
-              onChange={(e) => setNewTopic({ ...newTopic, name: e.target.value })}
-              required
-              className="flex-1"
-            />
-            <Button type="submit" disabled={loading}>
-              <Plus className="w-4 h-4 mr-2" />
-              Qo'shish
-            </Button>
-          </div>
-        </form>
-      </Card>
-
-      {/* Fanlar ro'yxati */}
-      <div className="space-y-4">
-        {subjects.map((subject) => (
-          <Card key={subject.id} className="overflow-hidden">
-            <div
-              className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-4 -m-4"
-              onClick={() => toggleSubject(subject.id)}
-            >
-              <div className="flex items-center gap-3">
-                {expandedSubjects.has(subject.id) ? (
-                  <ChevronDown className="w-5 h-5 text-gray-600" />
-                ) : (
-                  <ChevronRight className="w-5 h-5 text-gray-600" />
-                )}
-                <div>
-                  <h3 className="font-bold text-lg">{subject.name}</h3>
-                  <p className="text-gray-600 text-sm">
-                    {topics[subject.id]?.length || 0} ta mavzu
-                  </p>
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Subjects Section */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle>Subjects ({subjects.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateSubject} className="mb-6">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter subject name"
+                    value={newSubjectName}
+                    onChange={(e) => setNewSubjectName(e.target.value)}
+                    disabled={creating}
+                  />
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    leftIcon={<Plus />}
+                    disabled={creating || !newSubjectName.trim()}
+                    isLoading={creating}
+                  >
+                    Add
+                  </Button>
                 </div>
-              </div>
-            </div>
+              </form>
 
-            {expandedSubjects.has(subject.id) && (
-              <div className="mt-4 pl-8 space-y-2">
-                {topics[subject.id]?.length > 0 ? (
-                  topics[subject.id].map((topic) => (
-                    <div
-                      key={topic.id}
-                      className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
-                    >
-                      <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-semibold text-sm">
-                        {topic.topic_number}
-                      </span>
-                      <span className="text-gray-800">{topic.name}</span>
-                    </div>
-                  ))
+              <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                {subjects.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">
+                    No subjects yet. Create one!
+                  </p>
                 ) : (
-                  <p className="text-gray-500 italic">Mavzular mavjud emas</p>
+                  subjects.map((subject) => (
+                    <motion.div
+                      key={subject.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                        selectedSubjectId === subject.id
+                          ? 'border-primary-600 bg-primary-50'
+                          : 'border-gray-200 hover:border-primary-400 bg-white'
+                      }`}
+                      onClick={() => fetchTopics(subject.id)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                          <BookOpen className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">{subject.name}</p>
+                          <p className="text-sm text-gray-500">ID: {subject.id}</p>
+                        </div>
+                      </div>
+                      <Badge variant="primary">View Topics</Badge>
+                    </motion.div>
+                  ))
                 )}
               </div>
-            )}
+            </CardContent>
           </Card>
-        ))}
+        </motion.div>
+
+        {/* Topics Section */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                Topics {selectedSubjectId ? `(${topics.length})` : ''}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!selectedSubjectId ? (
+                <div className="text-center py-12">
+                  <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">Select a subject to view topics</p>
+                </div>
+              ) : loadingTopics ? (
+                <div className="py-12">
+                  <Loading size="lg" text="Loading topics..." />
+                </div>
+              ) : (
+                <>
+                  <form onSubmit={handleCreateTopic} className="mb-6 space-y-3">
+                    <Input
+                      placeholder="Topic number (e.g., 1)"
+                      type="number"
+                      min="1"
+                      value={newTopicNumber}
+                      onChange={(e) => setNewTopicNumber(e.target.value)}
+                      disabled={creatingTopic}
+                    />
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter topic name"
+                        value={newTopicName}
+                        onChange={(e) => setNewTopicName(e.target.value)}
+                        disabled={creatingTopic}
+                      />
+                      <Button
+                        type="submit"
+                        variant="success"
+                        leftIcon={<Plus />}
+                        disabled={
+                          creatingTopic ||
+                          !newTopicName.trim() ||
+                          !newTopicNumber.trim()
+                        }
+                        isLoading={creatingTopic}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  </form>
+
+                  <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                    {topics.length === 0 ? (
+                      <p className="text-gray-500 text-center py-8">
+                        No topics for this subject yet
+                      </p>
+                    ) : (
+                      topics
+                        .sort((a, b) => a.topic_number - b.topic_number)
+                        .map((topic, index) => (
+                          <motion.div
+                            key={topic.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="flex items-center justify-between p-4 rounded-xl border-2 border-gray-200 bg-white hover:border-purple-400 transition-all"
+                          >
+                            <div className="flex items-center gap-3">
+                              <Badge variant="primary" size="lg">
+                                {topic.topic_number}
+                              </Badge>
+                              <div>
+                                <p className="font-semibold text-gray-900">
+                                  {topic.name}
+                                </p>
+                                <p className="text-sm text-gray-500">
+                                  Topic ID: {topic.id}
+                                </p>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))
+                    )}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     </div>
   );

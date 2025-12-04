@@ -1,249 +1,261 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { adminApi } from '../../api/admin.api';
-import { Button } from '../../components/common/Button';
-import { Card } from '../../components/common/Card';
-import type { Result, Test, Student, Group } from '../../types';
-import { Download, Filter } from 'lucide-react';
+import type { Result, Test, Group, Student } from '../../types';
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Loading } from '../../components/ui/Loading';
+import { Badge } from '../../components/ui/Badge';
+import { Download, Filter, TrendingUp } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export const ResultsPage: React.FC = () => {
+  const { login, password } = useAuthStore();
   const [results, setResults] = useState<Result[]>([]);
   const [tests, setTests] = useState<Test[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
-  const [selectedGroup, setSelectedGroup] = useState<number | null>(null);
-  const [selectedTest, setSelectedTest] = useState<number | null>(null);
-  const [selectedStudent, setSelectedStudent] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
-  const { login, password } = useAuthStore();
+  const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
-  const fetchResults = async () => {
-    try {
-      const data = await adminApi.getResults(
-        login,
-        password,
-        selectedStudent || undefined,
-        selectedTest || undefined
-      );
-      setResults(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const fetchTests = async () => {
-    try {
-      const data = await adminApi.getTests(login, password);
-      setTests(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const fetchGroups = async () => {
-    try {
-      const data = await adminApi.getGroups(login, password);
-      setGroups(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const fetchStudents = async (groupId: number) => {
-    try {
-      const data = await adminApi.getStudents(groupId, login, password);
-      setStudents(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  const [filterTestId, setFilterTestId] = useState('');
+  const [filterGroupId, setFilterGroupId] = useState('');
+  const [filterStudentId, setFilterStudentId] = useState('');
 
   useEffect(() => {
-    fetchResults();
-    fetchTests();
-    fetchGroups();
+    fetchData();
   }, []);
 
   useEffect(() => {
-    fetchResults();
-  }, [selectedStudent, selectedTest]);
+    if (filterGroupId) {
+      fetchStudents(parseInt(filterGroupId));
+    } else {
+      setStudents([]);
+      setFilterStudentId('');
+    }
+  }, [filterGroupId]);
 
-  const handleExportResults = async () => {
-    setLoading(true);
+  const fetchData = async () => {
     try {
-      const blob = await adminApi.exportResults(login, password);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `natijalar_${new Date().toISOString().split('T')[0]}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (err: any) {
-      alert(err.message || 'Export xatolik yuz berdi');
+      const [testsData, groupsData] = await Promise.all([
+        adminApi.getTests(login, password),
+        adminApi.getGroups(login, password),
+      ]);
+      setTests(testsData);
+      setGroups(groupsData);
+      await fetchResults();
+    } catch (error: any) {
+      alert(error.response?.data?.detail || 'Failed to fetch data');
     } finally {
       setLoading(false);
     }
   };
 
-  const getStudentName = (studentId: number) => {
-    const allStudents = groups.flatMap((g) => g.students || []);
-    return allStudents.find((s) => s.id === studentId)?.full_name || `O'quvchi #${studentId}`;
+  const fetchStudents = async (groupId: number) => {
+    try {
+      const data = await adminApi.getStudentsByGroup(groupId, login, password);
+      setStudents(data);
+    } catch (error: any) {
+      console.error('Failed to fetch students:', error);
+    }
   };
 
-  const getTestName = (testId: number) => {
-    return tests.find((t) => t.id === testId)?.name || `Test #${testId}`;
+  const fetchResults = async () => {
+    try {
+      const studentId = filterStudentId ? parseInt(filterStudentId) : undefined;
+      const testId = filterTestId ? parseInt(filterTestId) : undefined;
+      const data = await adminApi.getResults(login, password, studentId, testId);
+      setResults(data);
+    } catch (error: any) {
+      alert(error.response?.data?.detail || 'Failed to fetch results');
+    }
   };
 
-  const getResultColor = (percentage: number) => {
-    if (percentage >= 85) return 'text-green-600 bg-green-50';
-    if (percentage >= 70) return 'text-blue-600 bg-blue-50';
-    if (percentage >= 50) return 'text-yellow-600 bg-yellow-50';
-    return 'text-red-600 bg-red-50';
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const blob = await adminApi.exportResults(login, password);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `results_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      alert('Results exported successfully!');
+    } catch (error: any) {
+      alert(error.response?.data?.detail || 'Failed to export results');
+    } finally {
+      setExporting(false);
+    }
   };
+
+  const getResultBadge = (percentage: number) => {
+    if (percentage >= 80) return { variant: 'success' as const, text: 'Excellent' };
+    if (percentage >= 60) return { variant: 'primary' as const, text: 'Good' };
+    if (percentage >= 40) return { variant: 'warning' as const, text: 'Pass' };
+    return { variant: 'danger' as const, text: 'Fail' };
+  };
+
+  if (loading) {
+    return <Loading size="xl" text="Loading results..." fullScreen />;
+  }
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6">Natijalar</h1>
+    <div className="space-y-6">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">Results</h1>
+        <p className="text-gray-600">View and export test results</p>
+      </motion.div>
 
-      {/* Filtrlar va Export */}
-      <Card className="mb-6">
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <Filter className="w-5 h-5" />
-            Filtrlar
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <select
-              onChange={(e) => {
-                const groupId = parseInt(e.target.value);
-                setSelectedGroup(groupId || null);
-                setSelectedStudent(null);
-                if (groupId) fetchStudents(groupId);
-              }}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Barcha guruhlar</option>
-              {groups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={selectedStudent || ''}
-              onChange={(e) => setSelectedStudent(parseInt(e.target.value) || null)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={!selectedGroup}
-            >
-              <option value="">Barcha o'quvchilar</option>
-              {students.map((student) => (
-                <option key={student.id} value={student.id}>
-                  {student.full_name}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={selectedTest || ''}
-              onChange={(e) => setSelectedTest(parseInt(e.target.value) || null)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Barcha testlar</option>
-              {tests.map((test) => (
-                <option key={test.id} value={test.id}>
-                  {test.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <Button onClick={handleExportResults} disabled={loading}>
-            <Download className="w-4 h-4 mr-2" />
-            Excel ga eksport qilish
-          </Button>
-        </div>
-      </Card>
-
-      {/* Statistika */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      {/* Filters */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
         <Card>
-          <div className="text-center">
-            <p className="text-gray-600 text-sm">Jami natijalar</p>
-            <p className="text-3xl font-bold text-blue-600">{results.length}</p>
-          </div>
-        </Card>
-        <Card>
-          <div className="text-center">
-            <p className="text-gray-600 text-sm">O'rtacha ball</p>
-            <p className="text-3xl font-bold text-green-600">
-              {results.length > 0
-                ? Math.round(results.reduce((sum, r) => sum + r.percentage, 0) / results.length)
-                : 0}
-              %
-            </p>
-          </div>
-        </Card>
-        <Card>
-          <div className="text-center">
-            <p className="text-gray-600 text-sm">A'lo natijalar</p>
-            <p className="text-3xl font-bold text-purple-600">
-              {results.filter((r) => r.percentage >= 85).length}
-            </p>
-          </div>
-        </Card>
-        <Card>
-          <div className="text-center">
-            <p className="text-gray-600 text-sm">Qoniqarsiz</p>
-            <p className="text-3xl font-bold text-red-600">
-              {results.filter((r) => r.percentage < 50).length}
-            </p>
-          </div>
-        </Card>
-      </div>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Filters</CardTitle>
+              <Button
+                variant="success"
+                leftIcon={<Download />}
+                onClick={handleExport}
+                isLoading={exporting}
+              >
+                Export Excel
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Filter by Test
+                </label>
+                <select
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary-500"
+                  value={filterTestId}
+                  onChange={(e) => setFilterTestId(e.target.value)}
+                >
+                  <option value="">All Tests</option>
+                  {tests.map((test) => (
+                    <option key={test.id} value={test.id}>
+                      {test.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-      {/* Natijalar jadvali */}
-      <Card>
-        <h2 className="text-xl font-semibold mb-4">Natijalar ro'yxati</h2>
-        {results.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">Natijalar mavjud emas</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">O'quvchi</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Test</th>
-                  <th className="text-center py-3 px-4 font-semibold text-gray-700">To'g'ri</th>
-                  <th className="text-center py-3 px-4 font-semibold text-gray-700">Jami</th>
-                  <th className="text-center py-3 px-4 font-semibold text-gray-700">Foiz</th>
-                  <th className="text-center py-3 px-4 font-semibold text-gray-700">Baho</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.map((result) => (
-                  <tr key={result.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4">{getStudentName(result.student_id)}</td>
-                    <td className="py-3 px-4">{getTestName(result.test_id)}</td>
-                    <td className="text-center py-3 px-4">{result.correct_count}</td>
-                    <td className="text-center py-3 px-4">{result.total_count}</td>
-                    <td className="text-center py-3 px-4">
-                      <span className={`px-3 py-1 rounded-full font-semibold ${getResultColor(result.percentage)}`}>
-                        {result.percentage}%
-                      </span>
-                    </td>
-                    <td className="text-center py-3 px-4 font-semibold">
-                      {result.percentage >= 85 ? '5' : result.percentage >= 70 ? '4' : result.percentage >= 50 ? '3' : '2'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Filter by Group
+                </label>
+                <select
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary-500"
+                  value={filterGroupId}
+                  onChange={(e) => setFilterGroupId(e.target.value)}
+                >
+                  <option value="">All Groups</option>
+                  {groups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Filter by Student
+                </label>
+                <select
+                  className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary-500"
+                  value={filterStudentId}
+                  onChange={(e) => setFilterStudentId(e.target.value)}
+                  disabled={!filterGroupId}
+                >
+                  <option value="">All Students</option>
+                  {students.map((student) => (
+                    <option key={student.id} value={student.id}>
+                      {student.full_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="mt-4">
+              <Button
+                variant="primary"
+                leftIcon={<Filter />}
+                onClick={fetchResults}
+              >
+                Apply Filters
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Results List */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Results ({results.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {results.map((result, index) => {
+                const badge = getResultBadge(result.percentage);
+                return (
+                  <motion.div
+                    key={result.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="flex items-center justify-between p-4 border-2 border-gray-200 rounded-xl hover:border-primary-400 transition-all bg-white"
+                  >
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center">
+                        <TrendingUp className="w-7 h-7 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-gray-900">
+                          Student ID: {result.student_id}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Test ID: {result.test_id} | Result ID: {result.id}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(result.created_at || '').toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right space-y-2">
+                      <div className="text-3xl font-bold text-gray-900">
+                        {result.percentage.toFixed(1)}%
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {result.correct_count} / {result.total_count}
+                      </div>
+                      <Badge variant={badge.variant}>{badge.text}</Badge>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+            {results.length === 0 && (
+              <p className="text-gray-500 text-center py-12">
+                No results found. Try adjusting the filters.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 };

@@ -1,12 +1,11 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-export const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
+const axiosInstance = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 30000,
 });
 
 // Request interceptor
@@ -25,16 +24,10 @@ axiosInstance.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response) {
-      // Server responded with error
-      const message = error.response.data?.message || error.response.data?.detail || 'Serverda xatolik yuz berdi';
-      return Promise.reject(new Error(message));
-    } else if (error.request) {
-      // Request was made but no response
-      return Promise.reject(new Error('Serverga ulanib bo\'lmadi'));
-    } else {
-      return Promise.reject(error);
+    if (error.response?.data?.detail) {
+      console.error('API Error:', error.response.data.detail);
     }
+    return Promise.reject(error);
   }
 );
 

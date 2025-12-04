@@ -1,91 +1,141 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
+import { Input } from '../../components/ui/Input';
+import { Button } from '../../components/ui/Button';
 import { useAuthStore } from '../../store/authStore';
 import { adminApi } from '../../api/admin.api';
-import { Button } from '../../components/common/Button';
-import { Input } from '../../components/common/Input';
-import { Card } from '../../components/common/Card';
-import { LogIn } from 'lucide-react';
+import { Lock, User, ArrowLeft, Info } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export const AdminLogin: React.FC = () => {
-  const [login, setLogin] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
+  const [login, setLogin] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      // Adminni tekshirish uchun gruppalarni olishga urinib ko'ramiz
       await adminApi.getGroups(login, password);
-
-      // Agar muvaffaqiyatli bo'lsa, auth saqlash
       setAuth(login, password);
       navigate('/admin/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Login yoki parol noto\'g\'ri');
+      setError(
+        err.response?.data?.detail || 'Invalid credentials. Please try again.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  const handleDemoLogin = () => {
+    setLogin('admin');
+    setPassword('bek_1255');
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        <div className="text-center mb-8">
-          <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <LogIn className="w-8 h-8 text-blue-600" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
-          <p className="text-gray-600 mt-2">Tizimga kirish</p>
-        </div>
+    <div className="min-h-screen gradient-primary flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            leftIcon={<ArrowLeft className="w-4 h-4" />}
+            onClick={() => navigate('/')}
+            className="mb-6 text-white hover:bg-white/10"
+          >
+            Back to Home
+          </Button>
 
-        <Card>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label="Login"
-              type="text"
-              value={login}
-              onChange={(e) => setLogin(e.target.value)}
-              placeholder="Admin login"
-              required
-            />
+          <Card variant="glass" className="animate-scale-in">
+            <CardHeader>
+              <CardTitle className="text-center text-3xl">Admin Login</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleLogin} className="space-y-6">
+                <Input
+                  label="Login"
+                  type="text"
+                  placeholder="Enter your login"
+                  value={login}
+                  onChange={(e) => setLogin(e.target.value)}
+                  leftIcon={<User className="w-5 h-5" />}
+                  required
+                  disabled={loading}
+                />
 
-            <Input
-              label="Parol"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Admin parol"
-              required
-            />
+                <Input
+                  label="Password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  leftIcon={<Lock className="w-5 h-5" />}
+                  required
+                  disabled={loading}
+                  error={error}
+                />
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                {error}
-              </div>
-            )}
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                  isLoading={loading}
+                  disabled={loading}
+                >
+                  Sign In
+                </Button>
 
-            <Button type="submit" variant="primary" className="w-full" disabled={loading}>
-              {loading ? 'Tekshirilmoqda...' : 'Kirish'}
-            </Button>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white text-gray-500">Demo credentials</span>
+                  </div>
+                </div>
 
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-full"
-              onClick={() => navigate('/')}
-            >
-              Ortga
-            </Button>
-          </form>
-        </Card>
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm text-blue-900 font-medium mb-2">
+                        Demo Credentials
+                      </p>
+                      <p className="text-sm text-blue-800">
+                        <span className="font-semibold">Login:</span> admin
+                      </p>
+                      <p className="text-sm text-blue-800">
+                        <span className="font-semibold">Password:</span> bek_1255
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-3 w-full border-blue-600 text-blue-600 hover:bg-blue-50"
+                        onClick={handleDemoLogin}
+                        disabled={loading}
+                      >
+                        Fill Demo Credentials
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     </div>
   );

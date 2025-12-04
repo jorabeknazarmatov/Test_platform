@@ -1,304 +1,212 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { testApi } from '../../api/test.api';
 import { useTestStore } from '../../store/testStore';
-import { Button } from '../../components/common/Button';
-import { Card } from '../../components/common/Card';
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Loading } from '../../components/ui/Loading';
+import { Badge } from '../../components/ui/Badge';
 import { Clock, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export const TestPage: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
   const {
     questions,
     currentQuestionIndex,
     answers,
     timeRemaining,
-    setSession,
     setQuestions,
     submitAnswer,
     nextQuestion,
     previousQuestion,
     setTimeRemaining,
     decrementTime,
-    startTest,
-    endTest,
-    reset,
   } = useTestStore();
 
-  const currentQuestion = questions[currentQuestionIndex];
-  const currentAnswer = answers.find((a) => a.question_id === currentQuestion?.id);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [selectedAnswer, setSelectedAnswer] = useState('');
 
   useEffect(() => {
-    if (!sessionId) {
-      navigate('/student');
-      return;
+    if (sessionId) {
+      fetchQuestions();
     }
-
-    const loadTest = async () => {
-      try {
-        const session = await testApi.getSession(parseInt(sessionId));
-        const testQuestions = await testApi.getQuestions(parseInt(sessionId));
-
-        setSession(parseInt(sessionId), session.test_id);
-        setQuestions(testQuestions);
-
-        // Calculate time remaining
-        if (session.started_at) {
-          const startTime = new Date(session.started_at).getTime();
-          const now = Date.now();
-          const elapsed = Math.floor((now - startTime) / 1000);
-          // Assuming duration is in session or we get it from test
-          // For now, let's set a default of 60 minutes
-          const totalSeconds = 60 * 60; // You should get this from the test duration
-          const remaining = Math.max(0, totalSeconds - elapsed);
-          setTimeRemaining(remaining);
-        } else {
-          // Test not started yet, set full duration
-          setTimeRemaining(60 * 60); // 60 minutes default
-        }
-
-        startTest();
-        setLoading(false);
-      } catch (err: any) {
-        setError(err.response?.data?.detail || 'Test yuklashda xatolik');
-        setLoading(false);
-      }
-    };
-
-    loadTest();
-
-    return () => {
-      endTest();
-    };
   }, [sessionId]);
 
-  // Timer effect
   useEffect(() => {
-    if (!loading && timeRemaining > 0) {
+    if (timeRemaining > 0) {
       const timer = setInterval(() => {
         decrementTime();
       }, 1000);
-
       return () => clearInterval(timer);
-    } else if (timeRemaining === 0 && !loading) {
-      handleFinishTest();
+    } else if (timeRemaining === 0 && questions.length > 0) {
+      handleFinish();
     }
-  }, [timeRemaining, loading]);
+  }, [timeRemaining]);
 
-  const handleAnswerSelect = async (answer: string) => {
-    if (!currentQuestion || !sessionId) return;
+  useEffect(() => {
+    const currentQuestion = questions[currentQuestionIndex];
+    if (currentQuestion) {
+      const existingAnswer = answers.find((a) => a.questionId === currentQuestion.id);
+      setSelectedAnswer(existingAnswer?.answer || '');
+    }
+  }, [currentQuestionIndex, questions, answers]);
 
-    submitAnswer(currentQuestion.id, answer);
-
-    // Auto-save answer to backend
+  const fetchQuestions = async () => {
     try {
-      await testApi.submitAnswer(parseInt(sessionId), currentQuestion.id, answer);
-    } catch (err) {
-      console.error('Failed to save answer:', err);
+      const data = await testApi.getQuestions(parseInt(sessionId!));
+      setQuestions(data);
+      setTimeRemaining(30 * 60);
+    } catch (error: any) {
+      alert(error.response?.data?.detail || 'Failed to load test');
+      navigate('/student');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleFinishTest = async () => {
-    if (!sessionId || submitting) return;
+  const handleAnswerSelect = (answer: string) => {
+    setSelectedAnswer(answer);
+    const currentQuestion = questions[currentQuestionIndex];
+    submitAnswer(currentQuestion.id, answer);
+  };
 
-    const confirmed = window.confirm('Testni yakunlamoqchimisiz?');
-    if (!confirmed) return;
+  const handleFinish = async () => {
+    if (!confirm('Are you sure you want to finish the test?')) return;
 
     setSubmitting(true);
     try {
-      await testApi.finishTest(parseInt(sessionId));
-      reset();
-      navigate(`/student/result/${sessionId}`);
-    } catch (err: any) {
-      alert(err.response?.data?.detail || 'Testni yakunlashda xatolik');
+      await testApi.finishTest(parseInt(sessionId!));
+      navigate(`/result/${sessionId}`);
+    } catch (error: any) {
+      alert(error.response?.data?.detail || 'Failed to submit test');
+    } finally {
       setSubmitting(false);
     }
   };
 
   const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
+    const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const getTimeColor = () => {
-    if (timeRemaining > 600) return 'text-green-600';
-    if (timeRemaining > 300) return 'text-yellow-600';
-    return 'text-red-600';
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card>
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Test yuklanmoqda...</p>
-          </div>
-        </Card>
-      </div>
-    );
+    return <Loading size="xl" text="Loading test..." fullScreen />;
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card>
-          <div className="text-center py-8">
-            <p className="text-red-600 mb-4">{error}</p>
-            <Button onClick={() => navigate('/student')}>Orqaga qaytish</Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!currentQuestion) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card>
-          <div className="text-center py-8">
-            <p className="text-gray-600">Savollar topilmadi</p>
-          </div>
-        </Card>
-      </div>
-    );
-  }
+  const currentQuestion = questions[currentQuestionIndex];
+  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header with Timer */}
-      <div className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="max-w-4xl mx-auto space-y-4">
+        {/* Header */}
+        <Card variant="gradient">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold text-gray-800">Test</h1>
-              <p className="text-sm text-gray-600">
-                Savol {currentQuestionIndex + 1} / {questions.length}
+              <h1 className="text-2xl font-bold">Test in Progress</h1>
+              <p className="text-white/80">
+                Question {currentQuestionIndex + 1} of {questions.length}
               </p>
             </div>
-            <div className="flex items-center gap-4">
-              <div className={`flex items-center gap-2 font-mono text-2xl font-bold ${getTimeColor()}`}>
+            <div className="text-right">
+              <div className="flex items-center gap-2 text-2xl font-bold">
                 <Clock className="w-6 h-6" />
                 {formatTime(timeRemaining)}
               </div>
-              <Button variant="danger" onClick={handleFinishTest} disabled={submitting}>
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Yakunlash
-              </Button>
+              <p className="text-sm text-white/80">Time Remaining</p>
             </div>
           </div>
+        </Card>
+
+        {/* Progress */}
+        <div className="bg-gray-200 rounded-full h-3 overflow-hidden">
+          <motion.div
+            className="h-full bg-gradient-to-r from-green-500 to-emerald-600"
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.5 }}
+          />
         </div>
-      </div>
 
-      {/* Question Content */}
-      <div className="container mx-auto px-4 py-8">
-        <Card className="max-w-4xl mx-auto">
-          {/* Question Text */}
-          <div className="mb-8">
-            <div className="flex items-start gap-3 mb-4">
-              <span className="bg-blue-600 text-white px-4 py-2 rounded-full font-bold text-lg flex-shrink-0">
-                {currentQuestionIndex + 1}
-              </span>
-              <p className="text-lg text-gray-800 flex-1 pt-1">{currentQuestion.text}</p>
-            </div>
-          </div>
-
-          {/* Answer Options */}
-          <div className="space-y-3 mb-8">
-            {currentQuestion.options.map((option, index) => {
-              const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
-              const isSelected = currentAnswer?.answer === optionLetter;
-
-              return (
-                <button
+        {/* Question */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">
+              {currentQuestion?.text || 'Loading question...'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {currentQuestion?.options.map((option) => (
+                <motion.button
                   key={option.id}
-                  onClick={() => handleAnswerSelect(optionLetter)}
-                  className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                    isSelected
-                      ? 'border-blue-600 bg-blue-50'
-                      : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleAnswerSelect(option.text)}
+                  className={`w-full p-4 text-left rounded-xl border-2 transition-all ${
+                    selectedAnswer === option.text
+                      ? 'border-primary-600 bg-primary-50'
+                      : 'border-gray-300 bg-white hover:border-primary-400'
                   }`}
                 >
-                  <div className="flex items-start gap-3">
-                    <span
-                      className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold ${
-                        isSelected ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                        selectedAnswer === option.text
+                          ? 'border-primary-600 bg-primary-600'
+                          : 'border-gray-400'
                       }`}
                     >
-                      {optionLetter}
-                    </span>
-                    <span className="flex-1 pt-1 text-gray-800">{option.text}</span>
+                      {selectedAnswer === option.text && (
+                        <div className="w-3 h-3 bg-white rounded-full" />
+                      )}
+                    </div>
+                    <span className="text-gray-900 font-medium">{option.text}</span>
                   </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Navigation */}
-          <div className="flex justify-between items-center pt-6 border-t">
-            <Button
-              variant="outline"
-              onClick={previousQuestion}
-              disabled={currentQuestionIndex === 0}
-            >
-              <ChevronLeft className="w-4 h-4 mr-2" />
-              Oldingi
-            </Button>
-
-            <div className="text-sm text-gray-600">
-              Javob berilgan: {answers.length} / {questions.length}
+                </motion.button>
+              ))}
             </div>
+          </CardContent>
+        </Card>
 
+        {/* Navigation */}
+        <div className="flex items-center justify-between gap-4">
+          <Button
+            variant="outline"
+            leftIcon={<ChevronLeft />}
+            onClick={previousQuestion}
+            disabled={currentQuestionIndex === 0}
+          >
+            Previous
+          </Button>
+
+          <Badge variant="primary" size="lg">
+            {answers.length} / {questions.length} Answered
+          </Badge>
+
+          {currentQuestionIndex === questions.length - 1 ? (
             <Button
-              onClick={nextQuestion}
-              disabled={currentQuestionIndex === questions.length - 1}
+              variant="success"
+              rightIcon={<CheckCircle />}
+              onClick={handleFinish}
+              isLoading={submitting}
             >
-              Keyingi
-              <ChevronRight className="w-4 h-4 ml-2" />
+              Finish Test
             </Button>
-          </div>
-        </Card>
-
-        {/* Question Grid */}
-        <Card className="max-w-4xl mx-auto mt-6">
-          <h3 className="font-semibold mb-4">Savollar ro'yxati</h3>
-          <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-15 gap-2">
-            {questions.map((question, index) => {
-              const hasAnswer = answers.some((a) => a.question_id === question.id);
-              const isCurrent = index === currentQuestionIndex;
-
-              return (
-                <button
-                  key={question.id}
-                  onClick={() => {
-                    const diff = index - currentQuestionIndex;
-                    if (diff > 0) {
-                      for (let i = 0; i < diff; i++) nextQuestion();
-                    } else if (diff < 0) {
-                      for (let i = 0; i < Math.abs(diff); i++) previousQuestion();
-                    }
-                  }}
-                  className={`aspect-square rounded-lg font-semibold text-sm transition-all ${
-                    isCurrent
-                      ? 'bg-blue-600 text-white scale-110'
-                      : hasAnswer
-                      ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {index + 1}
-                </button>
-              );
-            })}
-          </div>
-        </Card>
+          ) : (
+            <Button
+              variant="primary"
+              rightIcon={<ChevronRight />}
+              onClick={nextQuestion}
+            >
+              Next
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

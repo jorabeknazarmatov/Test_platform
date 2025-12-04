@@ -1,5 +1,13 @@
 import axiosInstance from './axios';
-import type { Group, Student, Subject, Topic, Test, Result, OTPResponse } from '../types';
+import type {
+  Group,
+  Student,
+  Subject,
+  Topic,
+  Test,
+  Result,
+  OTPResponse,
+} from '../types';
 
 const API_PREFIX = '/api/admin';
 
@@ -28,15 +36,24 @@ export const adminApi = {
   },
 
   // Students
-  createStudent: async (student: { group_id: number; full_name: string }, login: string, password: string) => {
+  createStudent: async (
+    groupId: number,
+    fullName: string,
+    login: string,
+    password: string
+  ) => {
     const response = await axiosInstance.post<Student>(
       `${API_PREFIX}/students?login=${login}&password=${password}`,
-      student
+      { group_id: groupId, full_name: fullName }
     );
     return response.data;
   },
 
-  getStudents: async (groupId: number, login: string, password: string) => {
+  getStudentsByGroup: async (
+    groupId: number,
+    login: string,
+    password: string
+  ) => {
     const response = await axiosInstance.get<Student[]>(
       `${API_PREFIX}/groups/${groupId}/students?login=${login}&password=${password}`
     );
@@ -68,18 +85,24 @@ export const adminApi = {
 
   // Topics
   createTopic: async (
-    topic: { subject_id: number; topic_number: number; name: string },
+    subjectId: number,
+    topicNumber: number,
+    name: string,
     login: string,
     password: string
   ) => {
     const response = await axiosInstance.post<Topic>(
       `${API_PREFIX}/topics?login=${login}&password=${password}`,
-      topic
+      { subject_id: subjectId, topic_number: topicNumber, name }
     );
     return response.data;
   },
 
-  getTopics: async (subjectId: number, login: string, password: string) => {
+  getTopicsBySubject: async (
+    subjectId: number,
+    login: string,
+    password: string
+  ) => {
     const response = await axiosInstance.get<Topic[]>(
       `${API_PREFIX}/subjects/${subjectId}/topics?login=${login}&password=${password}`
     );
@@ -88,13 +111,21 @@ export const adminApi = {
 
   // Tests
   createTest: async (
-    test: { name: string; subject_id: number; duration_minutes: number; topic_numbers?: number[] },
+    name: string,
+    subjectId: number,
+    durationMinutes: number,
+    topicNumbers: number[],
     login: string,
     password: string
   ) => {
     const response = await axiosInstance.post<Test>(
       `${API_PREFIX}/tests?login=${login}&password=${password}`,
-      test
+      {
+        name,
+        subject_id: subjectId,
+        duration_minutes: durationMinutes,
+        topic_numbers: topicNumbers,
+      }
     );
     return response.data;
   },
@@ -109,7 +140,12 @@ export const adminApi = {
   },
 
   // OTP
-  generateOTP: async (studentId: number, testId: number, login: string, password: string) => {
+  generateOTP: async (
+    studentId: number,
+    testId: number,
+    login: string,
+    password: string
+  ) => {
     const response = await axiosInstance.post<OTPResponse>(
       `${API_PREFIX}/generate-otp?student_id=${studentId}&test_id=${testId}&login=${login}&password=${password}`
     );
@@ -117,35 +153,27 @@ export const adminApi = {
   },
 
   // Results
-  getResults: async (login: string, password: string, studentId?: number, testId?: number) => {
+  getResults: async (
+    login: string,
+    password: string,
+    studentId?: number,
+    testId?: number
+  ) => {
     let url = `${API_PREFIX}/results?login=${login}&password=${password}`;
-    if (studentId) url += `&student_id=${studentId}`;
-    if (testId) url += `&test_id=${testId}`;
+    if (studentId) {
+      url += `&student_id=${studentId}`;
+    }
+    if (testId) {
+      url += `&test_id=${testId}`;
+    }
     const response = await axiosInstance.get<Result[]>(url);
     return response.data;
   },
 
-  // Export
   exportResults: async (login: string, password: string) => {
     const response = await axiosInstance.get(
       `${API_PREFIX}/export-results?login=${login}&password=${password}`,
       { responseType: 'blob' }
-    );
-    return response.data;
-  },
-
-  // Import
-  importTests: async (file: File, login: string, password: string) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await axiosInstance.post(
-      `${API_PREFIX}/import-tests?login=${login}&password=${password}`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
     );
     return response.data;
   },

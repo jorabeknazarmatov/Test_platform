@@ -2,33 +2,33 @@ import { create } from 'zustand';
 import type { Question } from '../types';
 
 interface Answer {
-  question_id: number;
+  questionId: number;
   answer: string;
 }
 
 interface TestState {
   sessionId: number | null;
+  studentId: number | null;
   testId: number | null;
   questions: Question[];
   answers: Answer[];
   currentQuestionIndex: number;
-  timeRemaining: number; // in seconds
+  timeRemaining: number;
   isTestActive: boolean;
-
-  setSession: (sessionId: number, testId: number) => void;
+  setSession: (sessionId: number, studentId: number, testId: number) => void;
   setQuestions: (questions: Question[]) => void;
   submitAnswer: (questionId: number, answer: string) => void;
   nextQuestion: () => void;
   previousQuestion: () => void;
   setTimeRemaining: (time: number) => void;
   decrementTime: () => void;
-  startTest: () => void;
-  endTest: () => void;
-  reset: () => void;
+  finishTest: () => void;
+  resetTest: () => void;
 }
 
-export const useTestStore = create<TestState>((set, get) => ({
+export const useTestStore = create<TestState>((set) => ({
   sessionId: null,
+  studentId: null,
   testId: null,
   questions: [],
   answers: [],
@@ -36,59 +36,55 @@ export const useTestStore = create<TestState>((set, get) => ({
   timeRemaining: 0,
   isTestActive: false,
 
-  setSession: (sessionId, testId) => set({ sessionId, testId }),
+  setSession: (sessionId, studentId, testId) =>
+    set({ sessionId, studentId, testId, isTestActive: true }),
 
   setQuestions: (questions) => set({ questions }),
 
-  submitAnswer: (questionId, answer) => {
-    const { answers } = get();
-    const existingIndex = answers.findIndex((a) => a.question_id === questionId);
+  submitAnswer: (questionId, answer) =>
+    set((state) => {
+      const existingIndex = state.answers.findIndex(
+        (a) => a.questionId === questionId
+      );
+      if (existingIndex >= 0) {
+        const newAnswers = [...state.answers];
+        newAnswers[existingIndex] = { questionId, answer };
+        return { answers: newAnswers };
+      }
+      return { answers: [...state.answers, { questionId, answer }] };
+    }),
 
-    if (existingIndex >= 0) {
-      // Update existing answer
-      const newAnswers = [...answers];
-      newAnswers[existingIndex] = { question_id: questionId, answer };
-      set({ answers: newAnswers });
-    } else {
-      // Add new answer
-      set({ answers: [...answers, { question_id: questionId, answer }] });
-    }
-  },
+  nextQuestion: () =>
+    set((state) => ({
+      currentQuestionIndex: Math.min(
+        state.currentQuestionIndex + 1,
+        state.questions.length - 1
+      ),
+    })),
 
-  nextQuestion: () => {
-    const { currentQuestionIndex, questions } = get();
-    if (currentQuestionIndex < questions.length - 1) {
-      set({ currentQuestionIndex: currentQuestionIndex + 1 });
-    }
-  },
-
-  previousQuestion: () => {
-    const { currentQuestionIndex } = get();
-    if (currentQuestionIndex > 0) {
-      set({ currentQuestionIndex: currentQuestionIndex - 1 });
-    }
-  },
+  previousQuestion: () =>
+    set((state) => ({
+      currentQuestionIndex: Math.max(state.currentQuestionIndex - 1, 0),
+    })),
 
   setTimeRemaining: (time) => set({ timeRemaining: time }),
 
-  decrementTime: () => {
-    const { timeRemaining } = get();
-    if (timeRemaining > 0) {
-      set({ timeRemaining: timeRemaining - 1 });
-    }
-  },
+  decrementTime: () =>
+    set((state) => ({
+      timeRemaining: Math.max(state.timeRemaining - 1, 0),
+    })),
 
-  startTest: () => set({ isTestActive: true }),
+  finishTest: () => set({ isTestActive: false }),
 
-  endTest: () => set({ isTestActive: false }),
-
-  reset: () => set({
-    sessionId: null,
-    testId: null,
-    questions: [],
-    answers: [],
-    currentQuestionIndex: 0,
-    timeRemaining: 0,
-    isTestActive: false,
-  }),
+  resetTest: () =>
+    set({
+      sessionId: null,
+      studentId: null,
+      testId: null,
+      questions: [],
+      answers: [],
+      currentQuestionIndex: 0,
+      timeRemaining: 0,
+      isTestActive: false,
+    }),
 }));

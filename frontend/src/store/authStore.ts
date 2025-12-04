@@ -2,9 +2,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 interface AuthState {
-  isAuthenticated: boolean;
   login: string;
   password: string;
+  isAuthenticated: boolean;
   setAuth: (login: string, password: string) => void;
   logout: () => void;
 }
@@ -12,11 +12,12 @@ interface AuthState {
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      isAuthenticated: false,
       login: '',
       password: '',
-      setAuth: (login, password) => set({ isAuthenticated: true, login, password }),
-      logout: () => set({ isAuthenticated: false, login: '', password: '' }),
+      isAuthenticated: false,
+      setAuth: (login, password) =>
+        set({ login, password, isAuthenticated: true }),
+      logout: () => set({ login: '', password: '', isAuthenticated: false }),
     }),
     {
       name: 'admin-auth',

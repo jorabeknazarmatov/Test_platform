@@ -10,12 +10,16 @@ export const studentApi = {
   },
 
   getStudentsByGroup: async (groupId: number) => {
-    const response = await axiosInstance.get<Student[]>(`${API_PREFIX}/groups/${groupId}/students`);
+    const response = await axiosInstance.get<Student[]>(
+      `${API_PREFIX}/groups/${groupId}/students`
+    );
     return response.data;
   },
 
   getSubjects: async () => {
-    const response = await axiosInstance.get<Subject[]>(`${API_PREFIX}/subjects`);
+    const response = await axiosInstance.get<Subject[]>(
+      `${API_PREFIX}/subjects`
+    );
     return response.data;
   },
 };

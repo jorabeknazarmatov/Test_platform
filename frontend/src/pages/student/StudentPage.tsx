@@ -1,30 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { studentApi } from '../../api/student.api';
 import { testApi } from '../../api/test.api';
-import { Button } from '../../components/common/Button';
-import { Input } from '../../components/common/Input';
-import { Card } from '../../components/common/Card';
 import type { Group, Student } from '../../types';
-import { LogIn, Users, User } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { Loading } from '../../components/ui/Loading';
+import { ArrowLeft, LogIn } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export const StudentPage: React.FC = () => {
+  const navigate = useNavigate();
   const [groups, setGroups] = useState<Group[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
-  const [selectedGroup, setSelectedGroup] = useState<number | null>(null);
-  const [selectedStudent, setSelectedStudent] = useState<number | null>(null);
-  const [otp, setOtp] = useState('');
+  const [selectedGroupId, setSelectedGroupId] = useState('');
+  const [selectedStudentId, setSelectedStudentId] = useState('');
   const [sessionId, setSessionId] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const navigate = useNavigate();
+  const [otp, setOtp] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [verifying, setVerifying] = useState(false);
+
+  useEffect(() => {
+    fetchGroups();
+  }, []);
+
+  useEffect(() => {
+    if (selectedGroupId) {
+      fetchStudents(parseInt(selectedGroupId));
+    } else {
+      setStudents([]);
+      setSelectedStudentId('');
+    }
+  }, [selectedGroupId]);
 
   const fetchGroups = async () => {
     try {
       const data = await studentApi.getGroups();
       setGroups(data);
-    } catch (err) {
-      console.error(err);
+    } catch (error: any) {
+      alert('Failed to fetch groups');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -32,160 +49,131 @@ export const StudentPage: React.FC = () => {
     try {
       const data = await studentApi.getStudentsByGroup(groupId);
       setStudents(data);
-    } catch (err) {
-      console.error(err);
+    } catch (error: any) {
+      alert('Failed to fetch students');
     }
   };
 
-  useEffect(() => {
-    fetchGroups();
-  }, []);
-
-  const handleGroupChange = (groupId: string) => {
-    const id = parseInt(groupId);
-    setSelectedGroup(id || null);
-    setSelectedStudent(null);
-    setStudents([]);
-    if (id) {
-      fetchStudents(id);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-
-    if (!sessionId || !otp) {
-      setError('Sessiya ID va OTP ni kiriting');
+    if (!sessionId.trim() || !otp.trim()) {
+      alert('Please enter both Session ID and OTP');
       return;
     }
 
-    setLoading(true);
+    setVerifying(true);
     try {
-      const response = await testApi.verifyOTP(parseInt(sessionId), otp);
-      if (response.success) {
-        navigate(`/student/test/${response.session_id}`);
+      const result = await testApi.verifyOTP(parseInt(sessionId), otp.trim());
+      if (result.success) {
+        navigate(`/test/${sessionId}`);
       } else {
-        setError('OTP noto\'g\'ri yoki muddati o\'tgan');
+        alert('Invalid OTP or Session ID');
       }
-    } catch (err: any) {
-      setError(err.response?.data?.detail || err.message || 'Xatolik yuz berdi');
+    } catch (error: any) {
+      alert(error.response?.data?.detail || 'Verification failed');
     } finally {
-      setLoading(false);
+      setVerifying(false);
     }
   };
 
+  if (loading) {
+    return <Loading size="xl" text="Loading..." fullScreen />;
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">Test Platformasi</h1>
-          <p className="text-gray-600">O'quvchi tizimiga kirish</p>
-        </div>
+    <div className="min-h-screen gradient-primary flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            leftIcon={<ArrowLeft className="w-4 h-4" />}
+            onClick={() => navigate('/')}
+            className="mb-6 text-white hover:bg-white/10"
+          >
+            Back to Home
+          </Button>
 
-        <Card className="mb-6">
-          <div className="space-y-6">
-            {/* Guruh tanlash */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                <Users className="w-4 h-4" />
-                Guruhni tanlang
-              </label>
-              <select
-                value={selectedGroup || ''}
-                onChange={(e) => handleGroupChange(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Guruhni tanlang</option>
-                {groups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <Card variant="glass">
+            <CardHeader>
+              <CardTitle className="text-center text-3xl">Student Login</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Your Group
+                  </label>
+                  <select
+                    className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary-500"
+                    value={selectedGroupId}
+                    onChange={(e) => setSelectedGroupId(e.target.value)}
+                  >
+                    <option value="">Select group</option>
+                    {groups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            {/* O'quvchi tanlash */}
-            {selectedGroup && (
-              <div>
-                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                  <User className="w-4 h-4" />
-                  O'quvchini tanlang
-                </label>
-                <select
-                  value={selectedStudent || ''}
-                  onChange={(e) => setSelectedStudent(parseInt(e.target.value) || null)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">O'quvchini tanlang</option>
-                  {students.map((student) => (
-                    <option key={student.id} value={student.id}>
-                      {student.full_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-        </Card>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Your Name
+                  </label>
+                  <select
+                    className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary-500"
+                    value={selectedStudentId}
+                    onChange={(e) => setSelectedStudentId(e.target.value)}
+                    disabled={!selectedGroupId}
+                  >
+                    <option value="">Select your name</option>
+                    {students.map((student) => (
+                      <option key={student.id} value={student.id}>
+                        {student.full_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-        {selectedStudent && (
-          <Card>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <h2 className="text-xl font-bold text-gray-800 mb-4">Test boshlash</h2>
-                <p className="text-sm text-gray-600 mb-4">
-                  O'qituvchidan Sessiya ID va OTP kodni oling
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Sessiya ID
-                </label>
                 <Input
+                  label="Session ID"
                   type="number"
-                  placeholder="Sessiya ID raqamini kiriting"
+                  placeholder="Enter session ID"
                   value={sessionId}
                   onChange={(e) => setSessionId(e.target.value)}
+                  disabled={verifying}
                   required
                 />
-              </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  OTP Kod
-                </label>
                 <Input
+                  label="OTP"
                   type="text"
-                  placeholder="6 xonali OTP kodni kiriting"
+                  placeholder="Enter OTP code"
                   value={otp}
-                  onChange={(e) => setOtp(e.target.value.toUpperCase())}
+                  onChange={(e) => setOtp(e.target.value)}
+                  disabled={verifying}
                   required
-                  maxLength={6}
-                  className="text-center text-2xl font-mono tracking-widest"
                 />
-              </div>
 
-              {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <p className="text-red-600 text-sm">{error}</p>
-                </div>
-              )}
-
-              <Button type="submit" disabled={loading} className="w-full py-3 text-lg">
-                <LogIn className="w-5 h-5 mr-2" />
-                Testni boshlash
-              </Button>
-            </form>
+                <Button
+                  type="submit"
+                  variant="success"
+                  size="lg"
+                  className="w-full"
+                  leftIcon={<LogIn />}
+                  isLoading={verifying}
+                >
+                  Start Test
+                </Button>
+              </form>
+            </CardContent>
           </Card>
-        )}
-
-        <div className="mt-6 text-center">
-          <a href="/" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-            ← Bosh sahifaga qaytish
-          </a>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

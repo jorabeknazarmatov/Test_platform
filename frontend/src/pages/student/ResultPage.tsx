@@ -1,195 +1,109 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { testApi } from '../../api/test.api';
-import { Button } from '../../components/common/Button';
-import { Card } from '../../components/common/Card';
 import type { TestResultResponse } from '../../types';
-import { CheckCircle, XCircle, Home, TrendingUp } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Loading } from '../../components/ui/Loading';
+import { Trophy, Home } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export const ResultPage: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
   const [result, setResult] = useState<TestResultResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!sessionId) {
-      navigate('/student');
-      return;
+    if (sessionId) {
+      fetchResult();
     }
-
-    const loadResult = async () => {
-      try {
-        const data = await testApi.getResult(parseInt(sessionId));
-        setResult(data);
-        setLoading(false);
-      } catch (err: any) {
-        setError(err.response?.data?.detail || 'Natijani yuklashda xatolik');
-        setLoading(false);
-      }
-    };
-
-    loadResult();
   }, [sessionId]);
 
-  const getResultColor = () => {
-    if (!result) return 'text-gray-600';
-    if (result.percentage >= 85) return 'text-green-600';
-    if (result.percentage >= 70) return 'text-blue-600';
-    if (result.percentage >= 50) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
-  const getResultBgColor = () => {
-    if (!result) return 'bg-gray-50';
-    if (result.percentage >= 85) return 'bg-green-50';
-    if (result.percentage >= 70) return 'bg-blue-50';
-    if (result.percentage >= 50) return 'bg-yellow-50';
-    return 'bg-red-50';
-  };
-
-  const getResultIcon = () => {
-    if (!result) return null;
-    if (result.percentage >= 50) {
-      return <CheckCircle className="w-24 h-24 text-green-500" />;
+  const fetchResult = async () => {
+    try {
+      const data = await testApi.getResult(parseInt(sessionId!));
+      setResult(data);
+    } catch (error: any) {
+      alert(error.response?.data?.detail || 'Failed to load result');
+      navigate('/student');
+    } finally {
+      setLoading(false);
     }
-    return <XCircle className="w-24 h-24 text-red-500" />;
-  };
-
-  const getGrade = () => {
-    if (!result) return '-';
-    if (result.percentage >= 85) return '5';
-    if (result.percentage >= 70) return '4';
-    if (result.percentage >= 50) return '3';
-    return '2';
-  };
-
-  const getResultMessage = () => {
-    if (!result) return '';
-    if (result.percentage >= 85) return 'A\'lo! Siz ajoyib natija ko\'rsatdingiz!';
-    if (result.percentage >= 70) return 'Yaxshi! Ko\'p savolga to\'g\'ri javob berdingiz.';
-    if (result.percentage >= 50) return 'Qoniqarli. Keyingi safar yaxshiroq tayyorlaning.';
-    return 'Qoniqarsiz. Ko\'proq o\'rganishingiz kerak.';
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card>
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Natijalar yuklanmoqda...</p>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card>
-          <div className="text-center py-8">
-            <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <p className="text-red-600 mb-4">{error}</p>
-            <Button onClick={() => navigate('/student')}>Bosh sahifaga qaytish</Button>
-          </div>
-        </Card>
-      </div>
-    );
+    return <Loading size="xl" text="Loading result..." fullScreen />;
   }
 
   if (!result) {
     return null;
   }
 
+  const getGrade = (percentage: number) => {
+    if (percentage >= 80) return { text: 'Excellent!', color: 'from-green-500 to-emerald-600' };
+    if (percentage >= 60) return { text: 'Good!', color: 'from-blue-500 to-cyan-600' };
+    if (percentage >= 40) return { text: 'Pass', color: 'from-yellow-500 to-orange-600' };
+    return { text: 'Need Improvement', color: 'from-red-500 to-rose-600' };
+  };
+
+  const grade = getGrade(result.percentage);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen gradient-primary flex items-center justify-center p-4">
       <div className="w-full max-w-2xl">
-        <Card className="text-center">
-          {/* Icon */}
-          <div className="mb-6">{getResultIcon()}</div>
-
-          {/* Title */}
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Test yakunlandi!</h1>
-          <p className="text-gray-600 mb-8">{getResultMessage()}</p>
-
-          {/* Score Display */}
-          <div className={`${getResultBgColor()} rounded-2xl p-8 mb-8`}>
-            <div className="mb-6">
-              <p className="text-gray-600 text-sm mb-2">Sizning natijangiz</p>
-              <div className={`text-7xl font-bold ${getResultColor()}`}>{result.percentage}%</div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="text-gray-600 text-sm mb-1">To'g'ri</p>
-                <p className="text-2xl font-bold text-green-600">{result.correct_count}</p>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Card variant="glass">
+            <CardHeader className="text-center">
+              <div className="w-24 h-24 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl">
+                <Trophy className="w-12 h-12 text-white" />
               </div>
-              <div>
-                <p className="text-gray-600 text-sm mb-1">Noto'g'ri</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {result.total_count - result.correct_count}
-                </p>
+              <CardTitle className="text-4xl">Test Completed!</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="text-center">
+                <div className={`inline-block px-8 py-4 rounded-2xl bg-gradient-to-r ${grade.color} text-white shadow-xl mb-4`}>
+                  <p className="text-5xl font-bold">{result.percentage.toFixed(1)}%</p>
+                </div>
+                <p className="text-2xl font-bold text-gray-900 mb-2">{grade.text}</p>
+                <p className="text-lg text-gray-600">{result.result_text}</p>
               </div>
-              <div>
-                <p className="text-gray-600 text-sm mb-1">Jami</p>
-                <p className="text-2xl font-bold text-gray-800">{result.total_count}</p>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Card variant="default">
+                  <CardContent className="text-center py-6">
+                    <p className="text-3xl font-bold text-green-600">
+                      {result.correct_count}
+                    </p>
+                    <p className="text-sm text-gray-600 mt-2">Correct Answers</p>
+                  </CardContent>
+                </Card>
+                <Card variant="default">
+                  <CardContent className="text-center py-6">
+                    <p className="text-3xl font-bold text-gray-900">
+                      {result.total_count}
+                    </p>
+                    <p className="text-sm text-gray-600 mt-2">Total Questions</p>
+                  </CardContent>
+                </Card>
               </div>
-            </div>
-          </div>
 
-          {/* Grade */}
-          <div className="mb-8">
-            <div className="inline-flex items-center gap-3 bg-white rounded-full px-8 py-4 shadow-lg">
-              <span className="text-gray-600 font-semibold">Baho:</span>
-              <span className={`text-5xl font-bold ${getResultColor()}`}>{getGrade()}</span>
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 gap-4 mb-8">
-            <div className="bg-white rounded-xl p-4 shadow-sm">
-              <div className="flex items-center justify-center gap-2 text-blue-600 mb-2">
-                <TrendingUp className="w-5 h-5" />
-                <span className="font-semibold">Muvaffaqiyat</span>
-              </div>
-              <p className={`text-3xl font-bold ${getResultColor()}`}>{result.percentage}%</p>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm">
-              <div className="flex items-center justify-center gap-2 text-purple-600 mb-2">
-                <CheckCircle className="w-5 h-5" />
-                <span className="font-semibold">To'g'ri javoblar</span>
-              </div>
-              <p className="text-3xl font-bold text-gray-800">
-                {result.correct_count}/{result.total_count}
-              </p>
-            </div>
-          </div>
-
-          {/* Result Text */}
-          {result.result_text && (
-            <div className="bg-gray-50 rounded-xl p-6 mb-8">
-              <p className="text-gray-700 text-lg">{result.result_text}</p>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex gap-4 justify-center">
-            <Button onClick={() => navigate('/student')} size="lg">
-              <Home className="w-5 h-5 mr-2" />
-              Bosh sahifaga qaytish
-            </Button>
-          </div>
-        </Card>
-
-        {/* Additional Info */}
-        <div className="mt-6 text-center">
-          <p className="text-gray-600 text-sm">
-            Natijalaringiz o'qituvchiga yuborildi. Tabriklaymiz!
-          </p>
-        </div>
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full"
+                leftIcon={<Home />}
+                onClick={() => navigate('/')}
+              >
+                Back to Home
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     </div>
   );
