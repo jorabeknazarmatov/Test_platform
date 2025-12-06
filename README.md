@@ -15,7 +15,16 @@ Test Platformasi - bu kollej o'quvchilari uchun mo'ljallangan to'liq funksional 
 - **Pydantic** - Ma'lumot validatsiya
 - **openpyxl** - Excel fayllari bilan ishlash
 
-### Frontend:
+### Frontend (Next.js versiyasi):
+- **Next.js 14+** - React framework (App Router)
+- **TypeScript** - Type-safe JavaScript
+- **Tailwind CSS** - Styling
+- **Framer Motion** - Animatsiyalar
+- **Axios** - HTTP client
+- **React Hook Form** - Form boshqaruv
+- **Zod** - Validatsiya
+
+### Frontend (Vite versiyasi - eski):
 - **React 19** - UI kutubxona
 - **TypeScript** - Type-safe JavaScript
 - **Vite** - Build tool
@@ -113,7 +122,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 Backend manzil: http://localhost:8000
 API Documentation: http://localhost:8000/docs
 
-### 2. Frontend O'rnatish
+### 2. Frontend O'rnatish (Next.js versiyasi)
 
 ```bash
 # Frontend papkasiga o'tish
@@ -122,15 +131,20 @@ cd frontend
 # Dependencies o'rnatish
 npm install
 
+# .env.local fayl yaratish
+# NEXT_PUBLIC_API_URL=http://localhost:8000
+
 # Development rejimida ishga tushirish
 npm run dev
 
 # Yoki production build
 npm run build
-npm run preview
+npm start
 ```
 
-Frontend manzil: http://localhost:5173
+Frontend manzil: http://localhost:3000
+
+**Eslatma:** Next.js versiyasida minimal, professional dizayn, O'zbek tilidagi interfeys va Framer Motion animatsiyalari ishlatilgan.
 
 ## 📡 API Endpoints
 

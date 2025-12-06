@@ -3,7 +3,35 @@
 
 ### dotenv ###
 .env
+# Environment files
+.env
+backend/.env
+*.env
 
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+backend/dev/
+
+# Node
+node_modules/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/

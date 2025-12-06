@@ -1,0 +1,313 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import AdminLayout from '@/components/admin/AdminLayout';
+import Card, { CardBody, CardHeader } from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import Select from '@/components/ui/Select';
+import Loading from '@/components/ui/Loading';
+import Badge from '@/components/ui/Badge';
+import { adminApi, studentApi } from '@/lib/api';
+import { getAdminCredentials } from '@/lib/adminAuth';
+import type { Test, Subject, Group, Student } from '@/types';
+
+export default function TestsPage() {
+  const [tests, setTests] = useState<Test[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showTestForm, setShowTestForm] = useState(false);
+  const [showOTPForm, setShowOTPForm] = useState(false);
+  const [selectedTest, setSelectedTest] = useState<number | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<number | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<number | null>(null);
+  const [testName, setTestName] = useState('');
+  const [subjectId, setSubjectId] = useState('');
+  const [duration, setDuration] = useState('60');
+  const [otpCode, setOtpCode] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const credentials = getAdminCredentials();
+      if (!credentials) return;
+
+      const [testsRes, subjectsRes, groupsRes] = await Promise.all([
+        adminApi.getTests(credentials.login, credentials.password),
+        adminApi.getSubjects(credentials.login, credentials.password),
+        studentApi.getGroups(),
+      ]);
+
+      setTests(testsRes.data);
+      setSubjects(subjectsRes.data);
+      setGroups(groupsRes.data);
+    } catch (err) {
+      setError('Ma\'lumotlarni yuklashda xatolik');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadStudents = async (groupId: number) => {
+    try {
+      const response = await studentApi.getStudentsByGroup(groupId);
+      setStudents(response.data);
+      setSelectedGroup(groupId);
+    } catch (err) {
+      setError('O\'quvchilarni yuklashda xatolik');
+    }
+  };
+
+  const handleCreateTest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    try {
+      const credentials = getAdminCredentials();
+      if (!credentials) return;
+
+      await adminApi.createTest(
+        {
+          name: testName,
+          subject_id: parseInt(subjectId),
+          duration_minutes: parseInt(duration),
+        },
+        credentials.login,
+        credentials.password
+      );
+      setTestName('');
+      setSubjectId('');
+      setDuration('60');
+      setShowTestForm(false);
+      loadData();
+    } catch (err) {
+      setError('Test yaratishda xatolik');
+    }
+  };
+
+  const handleGenerateOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudent || !selectedTest) return;
+    setError('');
+
+    try {
+      const credentials = getAdminCredentials();
+      if (!credentials) return;
+
+      const response = await adminApi.generateOTP(
+        selectedStudent,
+        selectedTest,
+        credentials.login,
+        credentials.password
+      );
+      setOtpCode(response.data.otp);
+      alert(`Session ID: ${response.data.session_id}\nOTP: ${response.data.otp}\n\nBu ma'lumotlarni o'quvchiga bering.`);
+      setShowOTPForm(false);
+      setSelectedTest(null);
+      setSelectedGroup(null);
+      setSelectedStudent(null);
+    } catch (err) {
+      setError('OTP yaratishda xatolik');
+    }
+  };
+
+  const handleDeleteTest = async (testId: number) => {
+    if (!confirm('Testni o\'chirmoqchimisiz?')) return;
+
+    try {
+      const credentials = getAdminCredentials();
+      if (!credentials) return;
+
+      await adminApi.deleteTest(testId, credentials.login, credentials.password);
+      loadData();
+    } catch (err) {
+      setError('Testni o\'chirishda xatolik');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <Loading />
+      </AdminLayout>
+    );
+  }
+
+  return (
+    <AdminLayout>
+      <div>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Testlar</h1>
+          <div className="flex gap-2">
+            <Button onClick={() => setShowTestForm(true)}>+ Test yaratish</Button>
+            <Button variant="secondary" onClick={() => setShowOTPForm(true)}>
+              OTP generatsiya
+            </Button>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            {error}
+          </div>
+        )}
+
+        {showTestForm && (
+          <Card className="mb-6">
+            <CardHeader>
+              <h2 className="text-xl font-semibold text-gray-900">Yangi test</h2>
+            </CardHeader>
+            <CardBody>
+              <form onSubmit={handleCreateTest} className="space-y-4">
+                <Input
+                  label="Test nomi"
+                  value={testName}
+                  onChange={(e) => setTestName(e.target.value)}
+                  placeholder="Masalan: 1-Nazorat ishi"
+                  required
+                />
+                <Select
+                  label="Fan"
+                  value={subjectId}
+                  onChange={(e) => setSubjectId(e.target.value)}
+                  required
+                >
+                  <option value="">Fanni tanlang</option>
+                  {subjects.map((subject) => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name}
+                    </option>
+                  ))}
+                </Select>
+                <Input
+                  label="Davomiyligi (daqiqada)"
+                  type="number"
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                  required
+                />
+                <div className="flex gap-2">
+                  <Button type="submit">Saqlash</Button>
+                  <Button variant="secondary" onClick={() => setShowTestForm(false)}>
+                    Bekor qilish
+                  </Button>
+                </div>
+              </form>
+            </CardBody>
+          </Card>
+        )}
+
+        {showOTPForm && (
+          <Card className="mb-6">
+            <CardHeader>
+              <h2 className="text-xl font-semibold text-gray-900">OTP generatsiya qilish</h2>
+            </CardHeader>
+            <CardBody>
+              <form onSubmit={handleGenerateOTP} className="space-y-4">
+                <Select
+                  label="Test"
+                  value={selectedTest || ''}
+                  onChange={(e) => setSelectedTest(parseInt(e.target.value))}
+                  required
+                >
+                  <option value="">Testni tanlang</option>
+                  {tests.map((test) => (
+                    <option key={test.id} value={test.id}>
+                      {test.name}
+                    </option>
+                  ))}
+                </Select>
+
+                <Select
+                  label="Guruh"
+                  value={selectedGroup || ''}
+                  onChange={(e) => loadStudents(parseInt(e.target.value))}
+                  required
+                >
+                  <option value="">Guruhni tanlang</option>
+                  {groups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+                </Select>
+
+                {selectedGroup && (
+                  <Select
+                    label="O'quvchi"
+                    value={selectedStudent || ''}
+                    onChange={(e) => setSelectedStudent(parseInt(e.target.value))}
+                    required
+                  >
+                    <option value="">O'quvchini tanlang</option>
+                    {students.map((student) => (
+                      <option key={student.id} value={student.id}>
+                        {student.full_name}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+                <div className="flex gap-2">
+                  <Button type="submit">OTP generatsiya qilish</Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setShowOTPForm(false);
+                      setSelectedTest(null);
+                      setSelectedGroup(null);
+                      setSelectedStudent(null);
+                    }}
+                  >
+                    Bekor qilish
+                  </Button>
+                </div>
+              </form>
+            </CardBody>
+          </Card>
+        )}
+
+        <Card>
+          <CardHeader>
+            <h2 className="text-xl font-semibold text-gray-900">Testlar ro'yxati</h2>
+          </CardHeader>
+          <CardBody>
+            {tests.length === 0 ? (
+              <p className="text-gray-600 text-center py-8">Testlar yo'q</p>
+            ) : (
+              <div className="space-y-3">
+                {tests.map((test) => (
+                  <div key={test.id} className="p-4 rounded-lg border border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium text-gray-900 mb-1">{test.name}</h3>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Badge variant="info">
+                            {subjects.find((s) => s.id === test.subject_id)?.name}
+                          </Badge>
+                          <span>• {test.duration_minutes} daqiqa</span>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => handleDeleteTest(test.id)}
+                      >
+                        O'chirish
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardBody>
+        </Card>
+      </div>
+    </AdminLayout>
+  );
+}

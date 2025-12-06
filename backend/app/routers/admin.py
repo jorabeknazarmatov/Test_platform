@@ -162,6 +162,21 @@ def list_subjects(
     subjects = db.query(Subject).all()
     return subjects
 
+@router.delete("/subjects/{subject_id}")
+def delete_subject(
+    subject_id: int,
+    db: Session = Depends(get_db),
+    authenticated: bool = Depends(admin_auth)
+):
+    """Fanni o'chirish"""
+    subject = db.query(Subject).filter(Subject.id == subject_id).first()
+    if not subject:
+        raise NotFoundException("Fan", subject_id)
+
+    db.delete(subject)
+    db.commit()
+    return {"message": "Fan o'chirildi", "success": True}
+
 # ============= MAVZULAR =============
 
 @router.post("/topics", response_model=TopicResponse)
@@ -194,6 +209,21 @@ def list_topics(
     """Fanningmavzularni ko'rish"""
     topics = db.query(Topic).filter(Topic.subject_id == subject_id).all()
     return topics
+
+@router.delete("/topics/{topic_id}")
+def delete_topic(
+    topic_id: int,
+    db: Session = Depends(get_db),
+    authenticated: bool = Depends(admin_auth)
+):
+    """Mavzuni o'chirish"""
+    topic = db.query(Topic).filter(Topic.id == topic_id).first()
+    if not topic:
+        raise NotFoundException("Mavzu", topic_id)
+
+    db.delete(topic)
+    db.commit()
+    return {"message": "Mavzu o'chirildi", "success": True}
 
 # ============= TESTLAR =============
 
@@ -240,6 +270,21 @@ def list_tests(
         query = query.filter(Test.subject_id == subject_id)
     return query.all()
 
+@router.delete("/tests/{test_id}")
+def delete_test(
+    test_id: int,
+    db: Session = Depends(get_db),
+    authenticated: bool = Depends(admin_auth)
+):
+    """Testni o'chirish"""
+    test = db.query(Test).filter(Test.id == test_id).first()
+    if not test:
+        raise NotFoundException("Test", test_id)
+
+    db.delete(test)
+    db.commit()
+    return {"message": "Test o'chirildi", "success": True}
+
 # ============= OTP =============
 
 @router.post("/generate-otp")
@@ -271,6 +316,53 @@ def generate_otp(
         "expires_at": session.expires_at,
         "success": True
     }
+
+@router.get("/sessions")
+def list_sessions(
+    db: Session = Depends(get_db),
+    authenticated: bool = Depends(admin_auth)
+):
+    """Barcha OTP sessiyalarni ko'rish"""
+    sessions = db.query(TestSession).order_by(TestSession.created_at.desc()).all()
+
+    result = []
+    for session in sessions:
+        result.append({
+            "id": session.id,
+            "student_id": session.student_id,
+            "test_id": session.test_id,
+            "otp": session.otp,
+            "status": session.status,
+            "created_at": session.created_at,
+            "expires_at": session.expires_at,
+            "started_at": session.started_at,
+            "completed_at": session.completed_at,
+            "student": {
+                "id": session.student.id,
+                "full_name": session.student.full_name
+            } if session.student else None,
+            "test": {
+                "id": session.test.id,
+                "name": session.test.name
+            } if session.test else None
+        })
+
+    return result
+
+@router.delete("/sessions/{session_id}")
+def delete_session(
+    session_id: int,
+    db: Session = Depends(get_db),
+    authenticated: bool = Depends(admin_auth)
+):
+    """OTP sessiyani o'chirish"""
+    session = db.query(TestSession).filter(TestSession.id == session_id).first()
+    if not session:
+        raise NotFoundException("Sessiya", session_id)
+
+    db.delete(session)
+    db.commit()
+    return {"message": "Sessiya o'chirildi", "success": True}
 
 # ============= NATIJALARI =============
 
