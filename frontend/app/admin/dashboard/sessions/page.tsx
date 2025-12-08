@@ -22,6 +22,7 @@ interface SessionData {
   student: {
     id: number;
     full_name: string;
+    group_name?: string;
   } | null;
   test: {
     id: number;
