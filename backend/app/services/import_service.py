@@ -4,6 +4,8 @@ from app.models.subject import Subject
 from app.models.topic import Topic
 from app.models.test import Test
 from app.models.question import Question, Option
+from app.models.group import Group
+from app.models.student import Student
 
 class ImportService:
     
@@ -136,6 +138,100 @@ class ImportService:
                 "errors": errors
             }
             
+        except json.JSONDecodeError as e:
+            return {
+                "success": False,
+                "message": f"JSON parsing xatosi: {str(e)}"
+            }
+        except Exception as e:
+            db.rollback()
+            return {
+                "success": False,
+                "message": f"Import xatosi: {str(e)}"
+            }
+
+    @staticmethod
+    def import_groups_from_json(db: Session, json_data: str) -> dict:
+        """
+        JSON formatdan guruh va studentlarni import qilish.
+        Format:
+        [
+            {
+                "group_name": "101-guruh",
+                "students": [
+                    {
+                        "first_name": "Otabek",
+                        "last_name": "Olimov",
+                        "middle_name": "Olim o'g'li",
+                        "birth_date": "12.12.1996"
+                    }
+                ]
+            }
+        ]
+        """
+        try:
+            data = json.loads(json_data)
+
+            imported_groups = 0
+            imported_students = 0
+            errors = []
+
+            for item in data:
+                group_name = item.get("group_name")
+                students_data = item.get("students", [])
+
+                if not group_name:
+                    errors.append("Guruh nomi topilmadi")
+                    continue
+
+                # Guruhni topish yoki yaratish
+                group = db.query(Group).filter(Group.name == group_name).first()
+
+                if not group:
+                    group = Group(name=group_name)
+                    db.add(group)
+                    db.flush()
+                    imported_groups += 1
+
+                # Studentlarni qo'shish
+                for student_data in students_data:
+                    first_name = student_data.get("first_name", "")
+                    last_name = student_data.get("last_name", "")
+                    middle_name = student_data.get("middle_name", "")
+
+                    # Full name yaratish
+                    name_parts = [first_name, middle_name, last_name]
+                    full_name = " ".join([part for part in name_parts if part]).strip()
+
+                    if not full_name:
+                        errors.append(f"Guruh '{group_name}' da studentning ismi topilmadi")
+                        continue
+
+                    # Studentni tekshirish (qaytarilmasligi uchun)
+                    existing_student = db.query(Student).filter(
+                        Student.group_id == group.id,
+                        Student.full_name == full_name
+                    ).first()
+
+                    if existing_student:
+                        continue
+
+                    student = Student(
+                        group_id=group.id,
+                        full_name=full_name
+                    )
+                    db.add(student)
+                    imported_students += 1
+
+            db.commit()
+
+            return {
+                "success": True,
+                "imported_groups": imported_groups,
+                "imported_students": imported_students,
+                "errors": errors
+            }
+
         except json.JSONDecodeError as e:
             return {
                 "success": False,

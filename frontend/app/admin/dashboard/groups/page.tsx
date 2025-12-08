@@ -18,9 +18,14 @@ export default function GroupsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showGroupForm, setShowGroupForm] = useState(false);
   const [showStudentForm, setShowStudentForm] = useState(false);
+  const [showImportForm, setShowImportForm] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<Group | null>(null);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [groupName, setGroupName] = useState('');
   const [studentName, setStudentName] = useState('');
+  const [importFile, setImportFile] = useState<File | null>(null);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   useEffect(() => {
     loadGroups();
@@ -80,6 +85,120 @@ export default function GroupsPage() {
       console.error('Error response:', err.response?.data);
       const errorMsg = err.response?.data?.detail || 'Guruh yaratishda xatolik';
       setError(errorMsg);
+    }
+  };
+
+  const handleSubmitGroup = (e: React.FormEvent) => {
+    if (editingGroup) {
+      handleUpdateGroup(e);
+    } else {
+      handleCreateGroup(e);
+    }
+  };
+  
+  // Import Groups
+  const handleImportGroups = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (!importFile) {
+      setError('Fayl tanlang');
+      return;
+    }
+
+    try {
+      const credentials = getAdminCredentials();
+      if (!credentials) return;
+
+      const response = await adminApi.importGroups(
+        importFile,
+        credentials.login,
+        credentials.password
+      );
+
+      if (response.data.success) {
+        setSuccess(
+          `✓ ${response.data.imported_groups} ta guruh, ${response.data.imported_students} ta o'quvchi import qilindi!`
+        );
+        setImportFile(null);
+        setShowImportForm(false);
+        loadGroups();
+      } else {
+        setError(response.data.message || 'Import xatosi');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Import xatosi');
+    }
+  };
+
+  // Edit Group
+  const handleEditGroup = (group: Group) => {
+    setEditingGroup(group);
+    setGroupName(group.name);
+    setShowGroupForm(true);
+  };
+
+  const handleUpdateGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingGroup) return;
+
+    setError('');
+    setSuccess('');
+
+    try {
+      const credentials = getAdminCredentials();
+      if (!credentials) return;
+
+      await adminApi.updateGroup(
+        editingGroup.id,
+        { name: groupName },
+        credentials.login,
+        credentials.password
+      );
+
+      setSuccess('Guruh nomi yangilandi!');
+      setGroupName('');
+      setShowGroupForm(false);
+      setEditingGroup(null);
+      loadGroups();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Guruhni yangilashda xatolik');
+    }
+  };
+
+  // Edit Student
+  const handleEditStudent = (student: Student) => {
+    setEditingStudent(student);
+    setStudentName(student.full_name);
+    setShowStudentForm(true);
+  };
+
+  const handleUpdateStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStudent || !selectedGroup) return;
+
+    setError('');
+    setSuccess('');
+
+    try {
+      const credentials = getAdminCredentials();
+      if (!credentials) return;
+
+      await adminApi.updateStudent(
+        editingStudent.id,
+        { full_name: studentName, group_id: selectedGroup },
+        credentials.login,
+        credentials.password
+      );
+
+      setSuccess('O\'quvchi ismi yangilandi!');
+      setStudentName('');
+      setShowStudentForm(false);
+      setEditingStudent(null);
+      loadStudents(selectedGroup);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'O\'quvchini yangilashda xatolik');
     }
   };
 
@@ -148,22 +267,91 @@ export default function GroupsPage() {
       <div>
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Guruxlar</h1>
-          <Button onClick={() => setShowGroupForm(true)}>+ Guruh qo'shish</Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setShowGroupForm(true)}>+ Guruh qo'shish</Button>
+            <Button variant="secondary" onClick={() => setShowImportForm(true)}>
+              📥 Import qilish
+            </Button>
+          </div>
         </div>
 
+        {success && (
+          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
+            {success}
+          </div>
+        )}
+        
         {error && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
             {error}
           </div>
         )}
 
+        {showImportForm && (
+          <Card className="mb-6">
+            <CardHeader>
+              <h2 className="text-xl font-semibold text-gray-900">Guruh va studentlarni import qilish</h2>
+            </CardHeader>
+            <CardBody>
+              <form onSubmit={handleImportGroups} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    JSON fayl
+                  </label>
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                    className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none p-2"
+                    required
+                  />
+                  <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm text-gray-700">
+                    <strong>Format:</strong>
+                    <pre className="mt-2 text-xs overflow-x-auto">
+        {
+`[
+  {
+    "group_name": "101-guruh",
+    "students": [
+      {
+        "first_name": "Otabek",
+        "last_name": "Olimov",
+        "middle_name": "Olim o'g'li",
+        "birth_date": "12.12.1996"
+      }
+    ]
+  }
+]`}
+                    </pre>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit">Import qilish</Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setShowImportForm(false);
+                      setImportFile(null);
+                    }}
+                  >
+                    Bekor qilish
+                  </Button>
+                </div>
+              </form>
+            </CardBody>
+          </Card>
+        )}
+
         {showGroupForm && (
           <Card className="mb-6">
             <CardHeader>
-              <h2 className="text-xl font-semibold text-gray-900">Yangi guruh</h2>
+              <h2 className="text-xl font-semibold text-gray-900">
+                {editingGroup ? 'Guruhni tahrirlash' : 'Yangi guruh qo\'shish'}
+              </h2>
             </CardHeader>
             <CardBody>
-              <form onSubmit={handleCreateGroup} className="space-y-4">
+              <form onSubmit={handleSubmitGroup} className="space-y-4">
                 <Input
                   label="Guruh nomi"
                   value={groupName}
@@ -172,8 +360,17 @@ export default function GroupsPage() {
                   required
                 />
                 <div className="flex gap-2">
-                  <Button type="submit">Saqlash</Button>
-                  <Button variant="secondary" onClick={() => setShowGroupForm(false)}>
+                  <Button type="submit">
+                    {editingGroup ? 'Yangilash' : 'Saqlash'}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setShowGroupForm(false);
+                      setEditingGroup(null);
+                      setGroupName('');
+                    }}
+                  >
                     Bekor qilish
                   </Button>
                 </div>
@@ -207,6 +404,16 @@ export default function GroupsPage() {
                           <h3 className="font-medium text-gray-900">{group.name}</h3>
                         </div>
                         <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditGroup(group);
+                            }}
+                          >
+                            ✏️ Tahrirlash
+                          </Button>
                           <Button
                             size="sm"
                             variant="danger"
@@ -248,7 +455,7 @@ export default function GroupsPage() {
               {!selectedGroup ? (
                 <p className="text-gray-600 text-center py-8">Guruhni tanlang</p>
               ) : showStudentForm ? (
-                <form onSubmit={handleCreateStudent} className="space-y-4">
+                <form onSubmit={editingStudent ? handleUpdateStudent : handleCreateStudent} className="space-y-4">
                   <Input
                     label="O'quvchi F.I.O"
                     value={studentName}
@@ -258,12 +465,16 @@ export default function GroupsPage() {
                   />
                   <div className="flex gap-2">
                     <Button type="submit" size="sm">
-                      Saqlash
+                      {editingStudent ? 'Yangilash' : 'Saqlash'}
                     </Button>
                     <Button
                       size="sm"
                       variant="secondary"
-                      onClick={() => setShowStudentForm(false)}
+                      onClick={() => {
+                        setShowStudentForm(false);
+                        setEditingStudent(null);
+                        setStudentName('');
+                      }}
                     >
                       Bekor qilish
                     </Button>
@@ -279,13 +490,22 @@ export default function GroupsPage() {
                       className="p-3 rounded-lg border border-gray-200 flex items-center justify-between"
                     >
                       <span className="text-gray-900">{student.full_name}</span>
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        onClick={() => handleDeleteStudent(student.id)}
-                      >
-                        O'chirish
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => handleEditStudent(student)}
+                        >
+                          ✏️ Tahrirlash
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => handleDeleteStudent(student.id)}
+                        >
+                          O'chirish
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>

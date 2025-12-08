@@ -34,8 +34,21 @@ export const adminApi = {
   getGroups: (login: string, password: string) =>
     api.get<Group[]>(`/api/admin/groups?login=${login}&password=${password}`),
 
+  updateGroup: (groupId: number, data: GroupCreate, login: string, password: string) =>
+    api.put<Group>(`/api/admin/groups/${groupId}?login=${login}&password=${password}`, data),
+
   deleteGroup: (groupId: number, login: string, password: string) =>
     api.delete(`/api/admin/groups/${groupId}?login=${login}&password=${password}`),
+
+  importGroups: (file: File, login: string, password: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/api/admin/import-groups?login=${login}&password=${password}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
 
   // O'quvchilar
   createStudent: (data: StudentCreate, login: string, password: string) =>
@@ -43,6 +56,9 @@ export const adminApi = {
 
   getStudentsByGroup: (groupId: number, login: string, password: string) =>
     api.get<Student[]>(`/api/admin/groups/${groupId}/students?login=${login}&password=${password}`),
+
+  updateStudent: (studentId: number, data: StudentCreate, login: string, password: string) =>
+    api.put<Student>(`/api/admin/students/${studentId}?login=${login}&password=${password}`, data),
 
   deleteStudent: (studentId: number, login: string, password: string) =>
     api.delete(`/api/admin/students/${studentId}?login=${login}&password=${password}`),

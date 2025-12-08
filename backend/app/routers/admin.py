@@ -87,6 +87,58 @@ def delete_group(
     logger.info(f"Guruh o'chirildi: group_id={group_id}")
     return {"message": "Guruh o'chirildi", "success": True}
 
+@router.put("/groups/{group_id}", response_model=GroupResponse)
+def update_group(
+    group_id: int,
+    group_update: GroupCreate,
+    db: Session = Depends(get_db),
+    authenticated: bool = Depends(admin_auth)
+):
+    """Guruh nomini tahrirlash"""
+    logger.info(f"Guruh tahrirlash: group_id={group_id}, new_name={group_update.name}")
+
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group:
+        logger.error(f"Guruh topilmadi: group_id={group_id}")
+        raise NotFoundException("Guruh", group_id)
+
+    # Nom takrorlanishini tekshirish
+    existing = db.query(Group).filter(
+        Group.name == group_update.name,
+        Group.id != group_id
+    ).first()
+    if existing:
+        logger.warning(f"Guruh nomi allaqachon mavjud: name={group_update.name}")
+        raise AlreadyExistsException("Guruh", "name", group_update.name)
+
+    group.name = group_update.name
+    db.commit()
+    db.refresh(group)
+
+    logger.info(f"Guruh tahrirlandi: group_id={group_id}")
+    return group
+
+@router.post("/import-groups")
+async def import_groups(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    authenticated: bool = Depends(admin_auth)
+):
+    """JSON fayldan guruh va studentlarni import qilish"""
+    logger.info("Guruh va studentlarni import qilish boshlandi")
+
+    content = await file.read()
+    json_data = content.decode('utf-8')
+
+    result = ImportService.import_groups_from_json(db, json_data)
+
+    if result["success"]:
+        logger.info(f"Import muvaffaqiyatli: {result['imported_groups']} guruh, {result['imported_students']} student")
+    else:
+        logger.error(f"Import xatosi: {result.get('message')}")
+
+    return result
+
 # ============= O'QUVCHILAR =============
 
 @router.post("/students", response_model=StudentResponse)
@@ -128,11 +180,39 @@ def delete_student(
     """O'quvchini o'chirish"""
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
-        raise HTTPException(status_code=404, detail="O'quvchi topilmadi")
-    
+        raise NotFoundException("O'quvchi", student_id)
+
     db.delete(student)
     db.commit()
     return {"message": "O'quvchi o'chirildi"}
+
+@router.put("/students/{student_id}", response_model=StudentResponse)
+def update_student(
+    student_id: int,
+    student_update: StudentCreate,
+    db: Session = Depends(get_db),
+    authenticated: bool = Depends(admin_auth)
+):
+    """O'quvchi ismini tahrirlash"""
+    logger.info(f"O'quvchi tahrirlash: student_id={student_id}")
+
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        logger.error(f"O'quvchi topilmadi: student_id={student_id}")
+        raise NotFoundException("O'quvchi", student_id)
+
+    # Guruhni tekshirish
+    group = db.query(Group).filter(Group.id == student_update.group_id).first()
+    if not group:
+        raise NotFoundException("Guruh", student_update.group_id)
+
+    student.full_name = student_update.full_name
+    student.group_id = student_update.group_id
+    db.commit()
+    db.refresh(student)
+
+    logger.info(f"O'quvchi tahrirlandi: student_id={student_id}")
+    return student
 
 # ============= FANLAR =============
 
