@@ -81,6 +81,8 @@ def get_test_questions(
     db: Session = Depends(get_db)
 ):
     """Test savollarini olish"""
+    import random
+
     logger.info(f"Savollar so'raldi: session_id={session_id}")
 
     session = db.query(TestSession).filter(TestSession.id == session_id).first()
@@ -99,13 +101,18 @@ def get_test_questions(
     result = []
     for question in questions:
         options = db.query(Option).filter(Option.question_id == question.id).all()
+
+        # Variantlarni aralashtirish (xavfsizlik uchun)
+        options_list = list(options)
+        random.shuffle(options_list)
+
         result.append({
             "id": question.id,
             "text": question.text,
-            "options": [{"id": opt.id, "text": opt.text} for opt in options]
+            "options": [{"id": opt.id, "text": opt.text} for opt in options_list]
         })
 
-    logger.info(f"{len(result)} ta savol qaytarildi: session_id={session_id}")
+    logger.info(f"{len(result)} ta savol qaytarildi (variantlar aralashtirildi): session_id={session_id}")
     return result
 
 @router.post("/submit-answer")

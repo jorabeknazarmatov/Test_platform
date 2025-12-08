@@ -92,7 +92,7 @@ class TestService:
             db: Database session
             test_session_id: Test sessiya ID
             question_id: Savol ID
-            student_answer: Talaba javobi
+            student_answer: Talaba javobi (option ID yoki text)
 
         Returns:
             Answer: Saqlangan javob
@@ -100,20 +100,35 @@ class TestService:
         Raises:
             NotFoundException: Savol topilmasa
         """
-        logger.info(f"Javobni saqlash: session_id={test_session_id}, question_id={question_id}")
+        logger.info(f"Javobni saqlash: session_id={test_session_id}, question_id={question_id}, answer={student_answer}")
 
         question = db.query(Question).filter(Question.id == question_id).first()
         if not question:
             logger.error(f"Savol topilmadi: question_id={question_id}")
             raise NotFoundException("Savol", question_id)
 
-        is_correct = student_answer.strip().lower() == question.correct_answer.strip().lower()
-        logger.debug(f"Javob tekshirildi: is_correct={is_correct}")
+        # Student answer ni tekshirish
+        # Frontend option.id (raqam) yoki option.text yuborishi mumkin
+        is_correct = False
+        actual_answer_text = student_answer
+
+        # Agar javob raqam bo'lsa (option.id), option text ni topish
+        if student_answer.strip().isdigit():
+            option = db.query(Option).filter(Option.id == int(student_answer)).first()
+            if option:
+                actual_answer_text = option.text
+                logger.debug(f"Option topildi: option_id={option.id}, text={option.text}")
+            else:
+                logger.warning(f"Option topilmadi: option_id={student_answer}")
+
+        # Javobni tekshirish
+        is_correct = actual_answer_text.strip().lower() == question.correct_answer.strip().lower()
+        logger.debug(f"Javob tekshirildi: student={actual_answer_text}, correct={question.correct_answer}, is_correct={is_correct}")
 
         answer = Answer(
             test_session_id=test_session_id,
             question_id=question_id,
-            student_answer=student_answer,
+            student_answer=actual_answer_text,  # Text sifatida saqlash
             is_correct=is_correct
         )
         db.add(answer)
