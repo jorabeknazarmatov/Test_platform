@@ -411,7 +411,7 @@ export default function GroupsPage() {
                               handleEditGroup(group);
                             }}
                           >
-                            ✏️ Tahrirlash
+                            ✏️
                           </Button>
                           <Button
                             size="sm"
@@ -495,7 +495,7 @@ export default function GroupsPage() {
                           variant="secondary"
                           onClick={() => handleEditStudent(student)}
                         >
-                          ✏️ Tahrirlash
+                          ✏️
                         </Button>
                         <Button
                           size="sm"

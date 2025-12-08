@@ -114,7 +114,7 @@ export default function StudentLoginPage() {
                     placeholder="Guruhni qidirish..."
                     value={groupSearch}
                     onChange={(e) => setGroupSearch(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="placeholder:text-gray-400 text-gray-900 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                   {groupSearch && (
                     <button
@@ -128,7 +128,7 @@ export default function StudentLoginPage() {
                 <select
                   value={selectedGroup || ''}
                   onChange={(e) => loadStudents(Number(e.target.value))}
-                  className="mt-2 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  className="text-gray-900 mt-2 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                   size={8}
                 >
                   <option value="" disabled>
@@ -158,7 +158,7 @@ export default function StudentLoginPage() {
                     value={studentSearch}
                     onChange={(e) => setStudentSearch(e.target.value)}
                     disabled={!selectedGroup}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="placeholder:text-gray-400 text-gray-900 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                   />
                   {studentSearch && (
                     <button
@@ -173,7 +173,7 @@ export default function StudentLoginPage() {
                   value={selectedStudent || ''}
                   onChange={(e) => setSelectedStudent(Number(e.target.value))}
                   disabled={!selectedGroup}
-                  className="mt-2 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="text-gray-900 mt-2 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
                   size={8}
                 >
                   <option value="" disabled>
