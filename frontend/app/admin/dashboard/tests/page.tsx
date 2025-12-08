@@ -246,6 +246,19 @@ export default function TestsPage() {
     }
   };
 
+  const handleToggleTestStatus = async (testId: number) => {
+    try {
+      const credentials = getAdminCredentials();
+      if (!credentials) return;
+
+      const response = await adminApi.toggleTestStatus(testId, credentials.login, credentials.password);
+      setSuccess(response.data.message);
+      loadData();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Test holatini o\'zgartirishda xatolik');
+    }
+  };
+
   if (isLoading) {
     return (
       <AdminLayout>
@@ -489,12 +502,17 @@ export default function TestsPage() {
                   required
                 >
                   <option value="">Testni tanlang</option>
-                  {tests.map((test) => (
+                  {tests.filter(test => test.is_active).map((test) => (
                     <option key={test.id} value={test.id}>
                       {test.name}
                     </option>
                   ))}
                 </Select>
+                {tests.filter(test => test.is_active).length === 0 && (
+                  <p className="text-sm text-red-600 mt-1">
+                    Faol testlar yo'q. Avval testni faol holatga o'tkazing.
+                  </p>
+                )}
 
                 <Select
                   label="Guruh"
@@ -574,16 +592,28 @@ export default function TestsPage() {
                           <Badge variant="info">
                             {subjects.find((s) => s.id === test.subject_id)?.name}
                           </Badge>
+                          <Badge variant={test.is_active ? 'success' : 'danger'}>
+                            {test.is_active ? 'Faol' : 'Faol emas'}
+                          </Badge>
                           <span>• {test.duration_minutes} daqiqa</span>
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        onClick={() => handleDeleteTest(test.id)}
-                      >
-                        O'chirish
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant={test.is_active ? 'primary' : 'secondary'}
+                          onClick={() => handleToggleTestStatus(test.id)}
+                        >
+                          {test.is_active ? 'Faol emasga' : 'Faolga'} o'tkazish
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => handleDeleteTest(test.id)}
+                        >
+                          O'chirish
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}

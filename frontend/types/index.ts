@@ -33,6 +33,7 @@ export interface Test {
   subject_id: number;
   name: string;
   duration_minutes: number;
+  is_active: boolean;
   created_at?: string;
   subject?: Subject;
   topics?: Topic[];

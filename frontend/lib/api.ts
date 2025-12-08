@@ -77,6 +77,9 @@ export const adminApi = {
   deleteTest: (testId: number, login: string, password: string) =>
     api.delete(`/api/admin/tests/${testId}?login=${login}&password=${password}`),
 
+  toggleTestStatus: (testId: number, login: string, password: string) =>
+    api.patch(`/api/admin/tests/${testId}/toggle-status?login=${login}&password=${password}`),
+
   // OTP
   generateOTP: (studentId: number, testId: number, login: string, password: string) =>
     api.post<OTPResponse>(`/api/admin/generate-otp?student_id=${studentId}&test_id=${testId}&login=${login}&password=${password}`),

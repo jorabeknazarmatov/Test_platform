@@ -285,6 +285,34 @@ def delete_test(
     db.commit()
     return {"message": "Test o'chirildi", "success": True}
 
+@router.patch("/tests/{test_id}/toggle-status")
+def toggle_test_status(
+    test_id: int,
+    db: Session = Depends(get_db),
+    authenticated: bool = Depends(admin_auth)
+):
+    """Test holatini o'zgartirish (Faol/Faol emas)"""
+    logger.info(f"Test holatini o'zgartirish: test_id={test_id}")
+
+    test = db.query(Test).filter(Test.id == test_id).first()
+    if not test:
+        logger.error(f"Test topilmadi: test_id={test_id}")
+        raise NotFoundException("Test", test_id)
+
+    # Holatni o'zgartirish
+    test.is_active = not test.is_active
+    db.commit()
+    db.refresh(test)
+
+    status_text = "faol" if test.is_active else "faol emas"
+    logger.info(f"Test holati o'zgartirildi: test_id={test_id}, is_active={test.is_active}")
+
+    return {
+        "message": f"Test {status_text} holatiga o'tkazildi",
+        "success": True,
+        "is_active": test.is_active
+    }
+
 # ============= OTP =============
 
 @router.post("/generate-otp")
@@ -306,6 +334,10 @@ def generate_otp(
     if not test:
         logger.error(f"Test topilmadi: test_id={test_id}")
         raise NotFoundException("Test", test_id)
+
+    if not test.is_active:
+        logger.warning(f"Test faol emas: test_id={test_id}")
+        raise ValidationException("Test faol emas. Faol testlar uchun OTP yaratishingiz mumkin.")
 
     session = OTPService.create_session(db, student_id, test_id)
 
@@ -338,6 +370,10 @@ def generate_otp_batch(
     if not test:
         logger.error(f"Test topilmadi: test_id={test_id}")
         raise NotFoundException("Test", test_id)
+
+    if not test.is_active:
+        logger.warning(f"Test faol emas: test_id={test_id}")
+        raise ValidationException("Test faol emas. Faol testlar uchun OTP yaratishingiz mumkin.")
 
     # Guruhning barcha o'quvchilarini olish
     students = db.query(Student).filter(Student.group_id == group_id).all()

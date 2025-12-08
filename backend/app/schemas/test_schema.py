@@ -12,7 +12,8 @@ class TestCreate(TestBase):
 
 class TestResponse(TestBase):
     id: int
-    
+    is_active: bool = True
+
     class Config:
         from_attributes = True
 
