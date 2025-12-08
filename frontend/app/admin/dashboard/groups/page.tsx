@@ -316,8 +316,7 @@ export default function GroupsPage() {
       {
         "first_name": "Otabek",
         "last_name": "Olimov",
-        "middle_name": "Olim o'g'li",
-        "birth_date": "12.12.1996"
+        "middle_name": "Olim o'g'li"
       }
     ]
   }
