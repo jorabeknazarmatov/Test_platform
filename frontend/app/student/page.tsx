@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Button from '@/components/ui/Button';
-import Card, { CardBody, CardHeader } from '@/components/ui/Card';
+import Card, { CardBody } from '@/components/ui/Card';
 import Loading from '@/components/ui/Loading';
+import AutocompleteInput from '@/components/ui/AutocompleteInput';
 import { studentApi } from '@/lib/api';
 import type { Group, Student } from '@/types';
 
@@ -16,9 +17,11 @@ export default function StudentLoginPage() {
   const [selectedGroup, setSelectedGroup] = useState<number | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [error, setError] = useState('');
   const [groupSearch, setGroupSearch] = useState('');
   const [studentSearch, setStudentSearch] = useState('');
+  const studentInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadGroups();
@@ -36,26 +39,35 @@ export default function StudentLoginPage() {
   };
 
   const loadStudents = async (groupId: number) => {
+    setIsLoadingStudents(true);
     try {
       const response = await studentApi.getStudentsByGroup(groupId);
       setStudents(response.data);
       setSelectedGroup(groupId);
       setSelectedStudent(null);
       setStudentSearch('');
+
+      // Auto-focus student input after loading
+      setTimeout(() => {
+        studentInputRef.current?.focus();
+      }, 100);
     } catch (err) {
       setError('O\'quvchilarni yuklashda xatolik');
+    } finally {
+      setIsLoadingStudents(false);
     }
   };
 
-  // Filter groups based on search
-  const filteredGroups = groups.filter((group) =>
-    group.name.toLowerCase().includes(groupSearch.toLowerCase())
-  );
+  // Prepare options for autocomplete
+  const groupOptions = groups.map((group) => ({
+    id: group.id,
+    label: group.name,
+  }));
 
-  // Filter students based on search
-  const filteredStudents = students.filter((student) =>
-    student.full_name.toLowerCase().includes(studentSearch.toLowerCase())
-  );
+  const studentOptions = students.map((student) => ({
+    id: student.id,
+    label: student.full_name,
+  }));
 
   const handleContinue = () => {
     if (!selectedStudent) {
@@ -102,94 +114,63 @@ export default function StudentLoginPage() {
 
         <Card>
           <CardBody>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-6">
               {/* Guruh tanlash */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  1. Guruhni tanlang
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Guruhni qidirish..."
-                    value={groupSearch}
-                    onChange={(e) => setGroupSearch(e.target.value)}
-                    className="placeholder:text-gray-400 text-gray-900 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  {groupSearch && (
-                    <button
-                      onClick={() => setGroupSearch('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-                <select
-                  value={selectedGroup || ''}
-                  onChange={(e) => loadStudents(Number(e.target.value))}
-                  className="text-gray-900 mt-2 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                  size={8}
-                >
-                  <option value="" disabled>
-                    Guruhni tanlang...
-                  </option>
-                  {filteredGroups.length === 0 ? (
-                    <option disabled>Guruh topilmadi</option>
-                  ) : (
-                    filteredGroups.map((group) => (
-                      <option key={group.id} value={group.id}>
-                        {group.name}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
+              <AutocompleteInput
+                label="1. Guruhni tanlang"
+                placeholder="Guruh nomini kiriting..."
+                options={groupOptions}
+                value={selectedGroup}
+                onChange={(value) => loadStudents(value)}
+                searchValue={groupSearch}
+                onSearchChange={setGroupSearch}
+                icon={
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                }
+              />
 
               {/* Student tanlash */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  2. Ismingizni tanlang
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Ismingizni qidirish..."
-                    value={studentSearch}
-                    onChange={(e) => setStudentSearch(e.target.value)}
-                    disabled={!selectedGroup}
-                    className="placeholder:text-gray-400 text-gray-900 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  />
-                  {studentSearch && (
-                    <button
-                      onClick={() => setStudentSearch('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-                <select
-                  value={selectedStudent || ''}
-                  onChange={(e) => setSelectedStudent(Number(e.target.value))}
-                  disabled={!selectedGroup}
-                  className="text-gray-900 mt-2 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  size={8}
-                >
-                  <option value="" disabled>
-                    {!selectedGroup ? 'Avval guruhni tanlang...' : 'Ismingizni tanlang...'}
-                  </option>
-                  {filteredStudents.length === 0 && selectedGroup ? (
-                    <option disabled>O'quvchi topilmadi</option>
-                  ) : (
-                    filteredStudents.map((student) => (
-                      <option key={student.id} value={student.id}>
-                        {student.full_name}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
+              <AutocompleteInput
+                label="2. Ismingizni tanlang"
+                placeholder="Ismingizni kiriting..."
+                options={studentOptions}
+                value={selectedStudent}
+                onChange={setSelectedStudent}
+                searchValue={studentSearch}
+                onSearchChange={setStudentSearch}
+                disabled={!selectedGroup}
+                loading={isLoadingStudents}
+                inputRef={studentInputRef}
+                icon={
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                }
+              />
+
+              {/* Success animation */}
+              <AnimatePresence>
+                {selectedStudent && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3"
+                  >
+                    <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-green-900">Tayyor!</p>
+                      <p className="text-xs text-green-700">
+                        {students.find(s => s.id === selectedStudent)?.full_name}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </CardBody>
         </Card>
