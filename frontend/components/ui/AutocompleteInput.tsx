@@ -19,7 +19,7 @@ interface AutocompleteInputProps {
   onSearchChange: (value: string) => void;
   loading?: boolean;
   icon?: React.ReactNode;
-  inputRef?: React.RefObject<HTMLInputElement>;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
 export default function AutocompleteInput({
