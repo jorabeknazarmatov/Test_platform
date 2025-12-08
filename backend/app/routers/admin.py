@@ -317,6 +317,60 @@ def generate_otp(
         "success": True
     }
 
+@router.post("/generate-otp-batch")
+def generate_otp_batch(
+    group_id: int = Query(...),
+    test_id: int = Query(...),
+    db: Session = Depends(get_db),
+    authenticated: bool = Depends(admin_auth)
+):
+    """Guruhning barcha o'quvchilari uchun OTP yaratish"""
+    logger.info(f"Batch OTP generatsiya: group_id={group_id}, test_id={test_id}")
+
+    # Guruhni tekshirish
+    group = db.query(Group).filter(Group.id == group_id).first()
+    if not group:
+        logger.error(f"Guruh topilmadi: group_id={group_id}")
+        raise NotFoundException("Guruh", group_id)
+
+    # Testni tekshirish
+    test = db.query(Test).filter(Test.id == test_id).first()
+    if not test:
+        logger.error(f"Test topilmadi: test_id={test_id}")
+        raise NotFoundException("Test", test_id)
+
+    # Guruhning barcha o'quvchilarini olish
+    students = db.query(Student).filter(Student.group_id == group_id).all()
+
+    if not students:
+        logger.warning(f"Guruhda o'quvchilar topilmadi: group_id={group_id}")
+        return {
+            "success": True,
+            "message": "Guruhda o'quvchilar yo'q",
+            "sessions": [],
+            "count": 0
+        }
+
+    # Barcha o'quvchilar uchun OTP yaratish
+    sessions = []
+    for student in students:
+        session = OTPService.create_session(db, student.id, test_id)
+        sessions.append({
+            "session_id": session.id,
+            "student_id": student.id,
+            "student_name": student.full_name,
+            "otp": session.otp,
+            "expires_at": session.expires_at
+        })
+
+    logger.info(f"Batch OTP yaratildi: {len(sessions)} ta session")
+    return {
+        "success": True,
+        "message": f"{len(sessions)} ta o'quvchi uchun OTP yaratildi",
+        "sessions": sessions,
+        "count": len(sessions)
+    }
+
 @router.get("/sessions")
 def list_sessions(
     db: Session = Depends(get_db),

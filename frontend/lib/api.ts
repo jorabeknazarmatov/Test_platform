@@ -81,6 +81,9 @@ export const adminApi = {
   generateOTP: (studentId: number, testId: number, login: string, password: string) =>
     api.post<OTPResponse>(`/api/admin/generate-otp?student_id=${studentId}&test_id=${testId}&login=${login}&password=${password}`),
 
+  generateOTPBatch: (groupId: number, testId: number, login: string, password: string) =>
+    api.post(`/api/admin/generate-otp-batch?group_id=${groupId}&test_id=${testId}&login=${login}&password=${password}`),
+
   // Sessiyalar
   getSessions: (login: string, password: string) =>
     api.get(`/api/admin/sessions?login=${login}&password=${password}`),

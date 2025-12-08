@@ -22,6 +22,7 @@ export default function TestsPage() {
   const [showTestForm, setShowTestForm] = useState(false);
   const [showImportForm, setShowImportForm] = useState(false);
   const [showOTPForm, setShowOTPForm] = useState(false);
+  const [otpGenerationType, setOtpGenerationType] = useState<'single' | 'batch'>('single');
   const [selectedTest, setSelectedTest] = useState<number | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<number | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<number | null>(null);
@@ -186,27 +187,48 @@ export default function TestsPage() {
 
   const handleGenerateOTP = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStudent || !selectedTest) return;
     setError('');
+    setSuccess('');
+
+    const credentials = getAdminCredentials();
+    if (!credentials) return;
 
     try {
-      const credentials = getAdminCredentials();
-      if (!credentials) return;
+      if (otpGenerationType === 'single') {
+        // Birma-bir generatsiya
+        if (!selectedStudent || !selectedTest) return;
 
-      const response = await adminApi.generateOTP(
-        selectedStudent,
-        selectedTest,
-        credentials.login,
-        credentials.password
-      );
-      setOtpCode(response.data.otp);
-      alert(`Session ID: ${response.data.session_id}\nOTP: ${response.data.otp}\n\nBu ma'lumotlarni o'quvchiga bering.`);
-      setShowOTPForm(false);
-      setSelectedTest(null);
-      setSelectedGroup(null);
-      setSelectedStudent(null);
-    } catch (err) {
-      setError('OTP yaratishda xatolik');
+        const response = await adminApi.generateOTP(
+          selectedStudent,
+          selectedTest,
+          credentials.login,
+          credentials.password
+        );
+        setOtpCode(response.data.otp);
+        alert(`Session ID: ${response.data.session_id}\nOTP: ${response.data.otp}\n\nBu ma'lumotlarni o'quvchiga bering.`);
+        setShowOTPForm(false);
+        setSelectedTest(null);
+        setSelectedGroup(null);
+        setSelectedStudent(null);
+      } else {
+        // Guruh uchun birdaniga
+        if (!selectedGroup || !selectedTest) return;
+
+        const response = await adminApi.generateOTPBatch(
+          selectedGroup,
+          selectedTest,
+          credentials.login,
+          credentials.password
+        );
+
+        setSuccess(`${response.data.count} ta o'quvchi uchun OTP yaratildi! Sessions sahifasidan ko'ring.`);
+        setShowOTPForm(false);
+        setSelectedTest(null);
+        setSelectedGroup(null);
+        setSelectedStudent(null);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'OTP yaratishda xatolik');
     }
   };
 
@@ -425,6 +447,41 @@ export default function TestsPage() {
             </CardHeader>
             <CardBody>
               <form onSubmit={handleGenerateOTP} className="space-y-4">
+                {/* Generatsiya turi */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Generatsiya turi
+                  </label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        value="single"
+                        checked={otpGenerationType === 'single'}
+                        onChange={(e) => {
+                          setOtpGenerationType('single');
+                          setSelectedStudent(null);
+                        }}
+                        className="text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700">Birma-bir</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        value="batch"
+                        checked={otpGenerationType === 'batch'}
+                        onChange={(e) => {
+                          setOtpGenerationType('batch');
+                          setSelectedStudent(null);
+                        }}
+                        className="text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700">Butun guruh uchun</span>
+                    </label>
+                  </div>
+                </div>
+
                 <Select
                   label="Test"
                   value={selectedTest || ''}
@@ -453,7 +510,8 @@ export default function TestsPage() {
                   ))}
                 </Select>
 
-                {selectedGroup && (
+                {/* Faqat birma-bir generatsiyada o'quvchi tanlash */}
+                {otpGenerationType === 'single' && selectedGroup && (
                   <Select
                     label="O'quvchi"
                     value={selectedStudent || ''}
@@ -468,12 +526,23 @@ export default function TestsPage() {
                     ))}
                   </Select>
                 )}
+
+                {/* Info message */}
+                {otpGenerationType === 'batch' && selectedGroup && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+                    Guruhning barcha o'quvchilari uchun OTP yaratiladi. Yaratilgan OTPlarni Sessions sahifasidan ko'rishingiz mumkin.
+                  </div>
+                )}
+
                 <div className="flex gap-2">
-                  <Button type="submit">OTP generatsiya qilish</Button>
+                  <Button type="submit">
+                    {otpGenerationType === 'single' ? 'OTP generatsiya qilish' : 'Barcha o\'quvchilar uchun yaratish'}
+                  </Button>
                   <Button
                     variant="secondary"
                     onClick={() => {
                       setShowOTPForm(false);
+                      setOtpGenerationType('single');
                       setSelectedTest(null);
                       setSelectedGroup(null);
                       setSelectedStudent(null);
