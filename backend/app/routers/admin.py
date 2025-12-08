@@ -393,7 +393,8 @@ def list_sessions(
             "completed_at": session.completed_at,
             "student": {
                 "id": session.student.id,
-                "full_name": session.student.full_name
+                "full_name": session.student.full_name,
+                "group_name": session.student.group.name if session.student.group else None
             } if session.student else None,
             "test": {
                 "id": session.test.id,
@@ -433,7 +434,32 @@ def list_results(
         query = query.filter(Result.student_id == student_id)
     if test_id:
         query = query.filter(Result.test_id == test_id)
-    return query.all()
+
+    results = query.all()
+
+    result_list = []
+    for result in results:
+        result_list.append({
+            "id": result.id,
+            "student_id": result.student_id,
+            "test_id": result.test_id,
+            "correct_count": result.correct_count,
+            "total_count": result.total_count,
+            "percentage": result.percentage,
+            "created_at": result.created_at,
+            "student": {
+                "id": result.student.id,
+                "full_name": result.student.full_name,
+                "group_name": result.student.group.name if result.student.group else None
+            } if result.student else None,
+            "test": {
+                "id": result.test.id,
+                "name": result.test.name,
+                "subject_name": result.test.subject.name if result.test.subject else None
+            } if result.test else None
+        })
+
+    return result_list
 
 @router.get("/export-results")
 def export_results(

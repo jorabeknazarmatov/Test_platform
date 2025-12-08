@@ -120,6 +120,12 @@ export default function ResultsPage() {
                         O'quvchi
                       </th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
+                        Guruh
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
+                        Fan
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
                         Test
                       </th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
@@ -136,6 +142,12 @@ export default function ResultsPage() {
                         <td className="py-3 px-4 text-sm text-gray-900">{index + 1}</td>
                         <td className="py-3 px-4 text-sm text-gray-900">
                           {result.student?.full_name || `Student #${result.student_id}`}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-600">
+                          {result.student?.group_name || '-'}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-600">
+                          {result.test?.subject_name || '-'}
                         </td>
                         <td className="py-3 px-4 text-sm text-gray-900">
                           {result.test?.name || `Test #${result.test_id}`}

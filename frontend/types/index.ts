@@ -51,18 +51,43 @@ export interface QuestionOption {
 
 export interface TestSession {
   id: number;
+  student_id: number;
+  test_id: number;
+  otp: string;
   status: 'waiting' | 'active' | 'completed' | 'expired' | 'blocked';
-  otp_attempts: number;
-  blocked_until?: string;
+  created_at: string;
   expires_at?: string;
   started_at?: string;
+  completed_at?: string;
+  student?: {
+    id: number;
+    full_name: string;
+    group_name?: string;
+  };
+  test?: {
+    id: number;
+    name: string;
+  };
 }
 
 export interface Result {
+  id: number;
+  student_id: number;
+  test_id: number;
   correct_count: number;
   total_count: number;
   percentage: number;
-  result_text?: string;
+  created_at: string;
+  student?: {
+    id: number;
+    full_name: string;
+    group_name?: string;
+  };
+  test?: {
+    id: number;
+    name: string;
+    subject_name?: string;
+  };
 }
 
 export interface OTPResponse {

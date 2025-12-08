@@ -136,6 +136,9 @@ export default function SessionsPage() {
                         O'quvchi
                       </th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
+                        Guruh
+                      </th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
                         Test
                       </th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-700">
@@ -163,6 +166,9 @@ export default function SessionsPage() {
                         </td>
                         <td className="py-3 px-4 text-sm text-gray-900">
                           {session.student?.full_name || `Student #${session.student_id}`}
+                        </td>
+                        <td className="py-3 px-4 text-sm text-gray-600">
+                          {session.student?.group_name || '-'}
                         </td>
                         <td className="py-3 px-4 text-sm text-gray-900">
                           {session.test?.name || `Test #${session.test_id}`}

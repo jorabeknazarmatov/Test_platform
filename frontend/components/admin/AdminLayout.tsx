@@ -26,7 +26,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   const navItems = [
     { name: 'Bosh sahifa', path: '/admin/dashboard', icon: '🏠' },
-    { name: 'Gruppalar', path: '/admin/dashboard/groups', icon: '👥' },
+    { name: 'Guruxlar', path: '/admin/dashboard/groups', icon: '👥' },
     { name: 'Fanlar', path: '/admin/dashboard/subjects', icon: '📚' },
     { name: 'Testlar', path: '/admin/dashboard/tests', icon: '📝' },
     { name: 'OTP Sessiyalar', path: '/admin/dashboard/sessions', icon: '🔐' },

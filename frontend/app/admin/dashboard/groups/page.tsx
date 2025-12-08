@@ -147,7 +147,7 @@ export default function GroupsPage() {
     <AdminLayout>
       <div>
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Gruppalar</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Guruxlar</h1>
           <Button onClick={() => setShowGroupForm(true)}>+ Guruh qo'shish</Button>
         </div>
 
@@ -185,11 +185,11 @@ export default function GroupsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <h2 className="text-xl font-semibold text-gray-900">Gruppalar ro'yxati</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Guruxlar ro'yxati</h2>
             </CardHeader>
             <CardBody>
               {groups.length === 0 ? (
-                <p className="text-gray-600 text-center py-8">Gruppalar yo'q</p>
+                <p className="text-gray-600 text-center py-8">Guruxlar yo'q</p>
               ) : (
                 <div className="space-y-2">
                   {groups.map((group) => (

@@ -94,7 +94,7 @@ export default function StudentLoginPage() {
             </CardHeader>
             <CardBody>
               {groups.length === 0 ? (
-                <p className="text-gray-600 text-center py-8">Gruppalar yo'q</p>
+                <p className="text-gray-600 text-center py-8">Guruxlar yo'q</p>
               ) : (
                 <div className="space-y-2">
                   {groups.map((group) => (
