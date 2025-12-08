@@ -10,24 +10,29 @@ import Loading from '@/components/ui/Loading';
 import Badge from '@/components/ui/Badge';
 import { adminApi, studentApi } from '@/lib/api';
 import { getAdminCredentials } from '@/lib/adminAuth';
-import type { Test, Subject, Group, Student } from '@/types';
+import type { Test, Subject, Group, Student, Topic } from '@/types';
 
 export default function TestsPage() {
   const [tests, setTests] = useState<Test[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [topics, setTopics] = useState<Topic[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showTestForm, setShowTestForm] = useState(false);
+  const [showImportForm, setShowImportForm] = useState(false);
   const [showOTPForm, setShowOTPForm] = useState(false);
   const [selectedTest, setSelectedTest] = useState<number | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<number | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<number | null>(null);
   const [testName, setTestName] = useState('');
   const [subjectId, setSubjectId] = useState('');
+  const [selectedTopics, setSelectedTopics] = useState<number[]>([]);
   const [duration, setDuration] = useState('60');
   const [otpCode, setOtpCode] = useState('');
+  const [importFile, setImportFile] = useState<File | null>(null);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   useEffect(() => {
     loadData();
@@ -54,6 +59,27 @@ export default function TestsPage() {
     }
   };
 
+  const loadTopics = async (selectedSubjectId: string) => {
+    if (!selectedSubjectId) {
+      setTopics([]);
+      return;
+    }
+
+    try {
+      const credentials = getAdminCredentials();
+      if (!credentials) return;
+
+      const response = await adminApi.getTopicsBySubject(
+        parseInt(selectedSubjectId),
+        credentials.login,
+        credentials.password
+      );
+      setTopics(response.data);
+    } catch (err) {
+      setError('Mavzularni yuklashda xatolik');
+    }
+  };
+
   const loadStudents = async (groupId: number) => {
     try {
       const response = await studentApi.getStudentsByGroup(groupId);
@@ -64,9 +90,39 @@ export default function TestsPage() {
     }
   };
 
+  const handleSubjectChange = (selectedSubjectId: string) => {
+    setSubjectId(selectedSubjectId);
+    setSelectedTopics([]);
+    loadTopics(selectedSubjectId);
+  };
+
+  const handleTopicToggle = (topicNumber: number) => {
+    setSelectedTopics(prev => {
+      if (prev.includes(topicNumber)) {
+        return prev.filter(t => t !== topicNumber);
+      } else {
+        return [...prev, topicNumber];
+      }
+    });
+  };
+
+  const handleSelectAllTopics = () => {
+    if (selectedTopics.length === topics.length) {
+      setSelectedTopics([]);
+    } else {
+      setSelectedTopics(topics.map(t => t.topic_number));
+    }
+  };
+
   const handleCreateTest = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
+
+    if (selectedTopics.length === 0) {
+      setError('Kamida bitta mavzuni tanlang');
+      return;
+    }
 
     try {
       const credentials = getAdminCredentials();
@@ -77,17 +133,54 @@ export default function TestsPage() {
           name: testName,
           subject_id: parseInt(subjectId),
           duration_minutes: parseInt(duration),
+          topic_numbers: selectedTopics,
         },
         credentials.login,
         credentials.password
       );
       setTestName('');
       setSubjectId('');
+      setSelectedTopics([]);
       setDuration('60');
+      setTopics([]);
       setShowTestForm(false);
+      setSuccess('Test muvaffaqiyatli yaratildi!');
       loadData();
     } catch (err) {
       setError('Test yaratishda xatolik');
+    }
+  };
+
+  const handleImportTests = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (!importFile) {
+      setError('Fayl tanlang');
+      return;
+    }
+
+    try {
+      const credentials = getAdminCredentials();
+      if (!credentials) return;
+
+      const response = await adminApi.importTests(
+        importFile,
+        credentials.login,
+        credentials.password
+      );
+
+      if (response.data.success) {
+        setSuccess(`${response.data.imported_count} ta test import qilindi!`);
+        setImportFile(null);
+        setShowImportForm(false);
+        loadData();
+      } else {
+        setError(response.data.message || 'Import xatosi');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Import xatosi');
     }
   };
 
@@ -145,7 +238,10 @@ export default function TestsPage() {
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Testlar</h1>
           <div className="flex gap-2">
-            <Button onClick={() => setShowTestForm(true)}>+ Test yaratish</Button>
+            <Button onClick={() => setShowTestForm(true)}>+ Qo'lda yaratish</Button>
+            <Button variant="secondary" onClick={() => setShowImportForm(true)}>
+              JSON Import
+            </Button>
             <Button variant="secondary" onClick={() => setShowOTPForm(true)}>
               OTP generatsiya
             </Button>
@@ -158,10 +254,16 @@ export default function TestsPage() {
           </div>
         )}
 
+        {success && (
+          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
+            {success}
+          </div>
+        )}
+
         {showTestForm && (
           <Card className="mb-6">
             <CardHeader>
-              <h2 className="text-xl font-semibold text-gray-900">Yangi test</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Qo'lda test yaratish</h2>
             </CardHeader>
             <CardBody>
               <form onSubmit={handleCreateTest} className="space-y-4">
@@ -175,7 +277,7 @@ export default function TestsPage() {
                 <Select
                   label="Fan"
                   value={subjectId}
-                  onChange={(e) => setSubjectId(e.target.value)}
+                  onChange={(e) => handleSubjectChange(e.target.value)}
                   required
                 >
                   <option value="">Fanni tanlang</option>
@@ -185,6 +287,46 @@ export default function TestsPage() {
                     </option>
                   ))}
                 </Select>
+
+                {subjectId && topics.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Mavzularni tanlang (nechinchi mavzugacha)
+                    </label>
+                    <div className="mb-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={handleSelectAllTopics}
+                      >
+                        {selectedTopics.length === topics.length ? 'Barchasini bekor qilish' : 'Hammasini tanlash'}
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                      {topics.map((topic) => (
+                        <label
+                          key={topic.id}
+                          className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedTopics.includes(topic.topic_number)}
+                            onChange={() => handleTopicToggle(topic.topic_number)}
+                            className="rounded border-gray-300"
+                          />
+                          <span className="text-sm">
+                            {topic.topic_number}. {topic.name}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-sm text-gray-600 mt-2">
+                      Tanlangan: {selectedTopics.length} ta mavzu
+                    </p>
+                  </div>
+                )}
+
                 <Input
                   label="Davomiyligi (daqiqada)"
                   type="number"
@@ -193,8 +335,81 @@ export default function TestsPage() {
                   required
                 />
                 <div className="flex gap-2">
-                  <Button type="submit">Saqlash</Button>
-                  <Button variant="secondary" onClick={() => setShowTestForm(false)}>
+                  <Button type="submit" disabled={!subjectId || selectedTopics.length === 0}>
+                    Saqlash
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setShowTestForm(false);
+                      setTestName('');
+                      setSubjectId('');
+                      setSelectedTopics([]);
+                      setTopics([]);
+                    }}
+                  >
+                    Bekor qilish
+                  </Button>
+                </div>
+              </form>
+            </CardBody>
+          </Card>
+        )}
+
+        {showImportForm && (
+          <Card className="mb-6">
+            <CardHeader>
+              <h2 className="text-xl font-semibold text-gray-900">JSON dan testlarni import qilish</h2>
+            </CardHeader>
+            <CardBody>
+              <form onSubmit={handleImportTests} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    JSON fayl
+                  </label>
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                    className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none p-2"
+                    required
+                  />
+                  <p className="text-sm text-gray-600 mt-2">
+                    JSON formatda testlarni yuklash uchun fayl tanlang
+                  </p>
+                  <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm text-gray-700">
+                    <strong>Format namunasi:</strong>
+                    <pre className="mt-2 text-xs overflow-x-auto">
+{`[
+  {
+    "subject": "Matematika",
+    "tests": {
+      "theme": "Algebra",
+      "testQuestions": [
+        {
+          "id": 1,
+          "question": "2+2=?",
+          "options": ["3", "4", "5"],
+          "correctAnswer": "4"
+        }
+      ]
+    }
+  }
+]`}
+                    </pre>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit">Import qilish</Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setShowImportForm(false);
+                      setImportFile(null);
+                    }}
+                  >
                     Bekor qilish
                   </Button>
                 </div>

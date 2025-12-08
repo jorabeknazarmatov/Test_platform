@@ -96,6 +96,17 @@ export const adminApi = {
     api.get(`/api/admin/export-results?login=${login}&password=${password}`, {
       responseType: 'blob',
     }),
+
+  // Import testlar
+  importTests: (file: File, login: string, password: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/api/admin/import-tests?login=${login}&password=${password}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
 };
 
 // Student API
