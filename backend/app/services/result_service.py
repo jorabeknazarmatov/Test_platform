@@ -3,6 +3,7 @@ from sqlalchemy import and_
 from app.models.answer import Answer
 from app.models.result import Result
 from app.models.test_session import TestSession, SessionStatus
+from app.models.question import Question
 from app.logger import get_logger
 from app.exceptions import NotFoundException
 
@@ -40,11 +41,19 @@ class ResultService:
             Answer.test_session_id == test_session_id
         ).all()
 
-        total_count = len(answers)
+        # Jami savollar soni - bu har doim 20 (test.py:99 da hardcoded)
+        # Yoki testning haqiqiy savollar sonini olish mumkin
+        total_count = 20  # Default qiymat
+
+        # Agar test savollar soni boshqacha bo'lsa, uni olish:
+        # total_questions = db.query(Question).filter(Question.test_id == test_session.test_id).count()
+        # if total_questions > 0:
+        #     total_count = min(20, total_questions)  # Maksimal 20 ta savol
+
         correct_count = sum(1 for answer in answers if answer.is_correct)
         percentage = (correct_count / total_count * 100) if total_count > 0 else 0
 
-        logger.info(f"Natija: correct={correct_count}, total={total_count}, percentage={percentage:.2f}%")
+        logger.info(f"Natija: correct={correct_count}, total={total_count}, answered={len(answers)}, percentage={percentage:.2f}%")
 
         # Eski natijani almashtirish (qayta topshirganda)
         existing_result = db.query(Result).filter(

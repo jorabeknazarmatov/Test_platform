@@ -350,7 +350,7 @@ export default function TestsPage() {
                             onChange={() => handleTopicToggle(topic.topic_number)}
                             className="rounded border-gray-300"
                           />
-                          <span className="text-sm">
+                          <span className="text-sm text-gray-700">
                             {topic.topic_number}. {topic.name}
                           </span>
                         </label>
