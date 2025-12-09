@@ -19,6 +19,8 @@ export default function TestPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [timeRemaining, setTimeRemaining] = useState(0); // sekund hisobida
+  const [testDuration, setTestDuration] = useState(0); // umumiy vaqt
 
   useEffect(() => {
     const sid = localStorage.getItem('testSessionId');
@@ -34,10 +36,33 @@ export default function TestPage() {
     loadQuestions(parseInt(sid));
   }, [router]);
 
+  // Timer effect
+  useEffect(() => {
+    if (timeRemaining <= 0 || isSubmitting) return;
+
+    const timer = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleFinish(); // Vaqt tugaganda avtomatik yakunlash
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeRemaining, isSubmitting]);
+
   const loadQuestions = async (sid: number) => {
     try {
       const response = await testApi.getQuestions(sid);
       setQuestions(response.data);
+
+      // Test vaqtini olish (masalan: 60 daqiqa = 3600 sekund)
+      const duration = 3600; // default 60 daqiqa
+      setTestDuration(duration);
+      setTimeRemaining(duration);
     } catch (err: any) {
       if (err.response?.status === 401) {
         setError('Sessiya faol emas. OTP qayta kiriting.');
@@ -136,13 +161,43 @@ export default function TestPage() {
   const currentQuestion = questions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
 
+  // Vaqtni formatlash (HH:MM:SS)
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Timer rangi (qizil - kam vaqt, sariq - o'rta, yashil - ko'p vaqt)
+  const getTimerColor = () => {
+    const percentage = (timeRemaining / testDuration) * 100;
+    if (percentage <= 10) return 'text-red-600';
+    if (percentage <= 30) return 'text-orange-500';
+    return 'text-green-600';
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
       <div className="max-w-3xl mx-auto">
         {/* Header */}
-        <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Test</h1>
-          <p className="text-gray-600">{studentName}</p>
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-center flex-1">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Test</h1>
+              <p className="text-gray-600">{studentName}</p>
+            </div>
+
+            {/* Timer */}
+            <div className="bg-white rounded-lg shadow-md px-6 py-4 border-2 border-gray-200">
+              <div className="text-center">
+                <p className="text-xs text-gray-500 mb-1">Qolgan vaqt</p>
+                <div className={`text-3xl font-mono font-bold ${getTimerColor()}`}>
+                  {formatTime(timeRemaining)}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Progress Bar */}
