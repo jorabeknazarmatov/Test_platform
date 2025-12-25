@@ -6,7 +6,7 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 export default function Card({ children, hover = false, className = '', ...props }: CardProps) {
-  const baseStyles = 'bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden';
+  const baseStyles = 'bg-white rounded-2xl shadow-sm border border-gray-100';
   const hoverStyles = hover ? 'hover:shadow-md transition-shadow duration-200' : '';
 
   return (
