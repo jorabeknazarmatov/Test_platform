@@ -19,21 +19,41 @@ interface ResultData {
   student?: {
     id: number;
     full_name: string;
+    group_name?: string;
   };
   test?: {
     id: number;
     name: string;
+    subject_name?: string;
   };
 }
 
 export default function ResultsPage() {
   const [results, setResults] = useState<ResultData[]>([]);
+  const [filteredResults, setFilteredResults] = useState<ResultData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState('');
+  const [selectedTest, setSelectedTest] = useState('');
+  const [minPercentage, setMinPercentage] = useState('');
+  const [maxPercentage, setMaxPercentage] = useState('');
+
+  // Unique values for filters
+  const [groups, setGroups] = useState<string[]>([]);
+  const [subjects, setSubjects] = useState<string[]>([]);
+  const [tests, setTests] = useState<string[]>([]);
 
   useEffect(() => {
     loadResults();
   }, []);
+
+  useEffect(() => {
+    applyFilters();
+  }, [results, searchQuery, selectedGroup, selectedSubject, selectedTest, minPercentage, maxPercentage]);
 
   const loadResults = async () => {
     try {
@@ -42,11 +62,65 @@ export default function ResultsPage() {
 
       const response = await adminApi.getResults(credentials.login, credentials.password);
       setResults(response.data);
+
+      // Extract unique values for filters
+      const uniqueGroups = [...new Set(response.data.map((r: ResultData) => r.student?.group_name).filter(Boolean))] as string[];
+      const uniqueSubjects = [...new Set(response.data.map((r: ResultData) => r.test?.subject_name).filter(Boolean))] as string[];
+      const uniqueTests = [...new Set(response.data.map((r: ResultData) => r.test?.name).filter(Boolean))] as string[];
+
+      setGroups(uniqueGroups);
+      setSubjects(uniqueSubjects);
+      setTests(uniqueTests);
     } catch (err) {
       setError('Natijalarni yuklashda xatolik');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const applyFilters = () => {
+    let filtered = [...results];
+
+    // Search by student name
+    if (searchQuery) {
+      filtered = filtered.filter((result) =>
+        result.student?.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Filter by group
+    if (selectedGroup) {
+      filtered = filtered.filter((result) => result.student?.group_name === selectedGroup);
+    }
+
+    // Filter by subject
+    if (selectedSubject) {
+      filtered = filtered.filter((result) => result.test?.subject_name === selectedSubject);
+    }
+
+    // Filter by test
+    if (selectedTest) {
+      filtered = filtered.filter((result) => result.test?.name === selectedTest);
+    }
+
+    // Filter by percentage range
+    if (minPercentage) {
+      filtered = filtered.filter((result) => result.percentage >= parseFloat(minPercentage));
+    }
+    if (maxPercentage) {
+      filtered = filtered.filter((result) => result.percentage <= parseFloat(maxPercentage));
+    }
+
+    setFilteredResults(filtered);
+  };
+
+  const resetFilters = () => {
+    setSearchQuery('');
+    setSelectedGroup('');
+    setSelectedSubject('');
+    setSelectedTest('');
+    setMinPercentage('');
+    setMaxPercentage('');
   };
 
   const handleExport = async () => {
@@ -101,13 +175,148 @@ export default function ResultsPage() {
           </div>
         )}
 
+        {/* Filters Section */}
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-900">Filtrlar</h2>
+              <Button onClick={resetFilters} variant="secondary" size="sm">
+                🔄 Tozalash
+              </Button>
+            </div>
+          </CardHeader>
+          <CardBody>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Search */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  O'quvchi qidirish
+                </label>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Ism bo'yicha qidirish..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Group Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Guruh
+                </label>
+                <select
+                  value={selectedGroup}
+                  onChange={(e) => setSelectedGroup(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Barchasi</option>
+                  {groups
+                  .sort((a, b) => {
+                    const numA = parseInt(a);
+                    const numB = parseInt(b);
+                    return numA - numB;
+                  })
+                  .map((group) => (
+                    <option key={group} value={group}>
+                      {group}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Subject Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Fan
+                </label>
+                <select
+                  value={selectedSubject}
+                  onChange={(e) => setSelectedSubject(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Barchasi</option>
+                  {subjects.map((subject) => (
+                    <option key={subject} value={subject}>
+                      {subject}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Test Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Test
+                </label>
+                <select
+                  value={selectedTest}
+                  onChange={(e) => setSelectedTest(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Barchasi</option>
+                  {tests.map((test) => (
+                    <option key={test} value={test}>
+                      {test}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Min Percentage */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Minimal foiz
+                </label>
+                <input
+                  type="number"
+                  value={minPercentage}
+                  onChange={(e) => setMinPercentage(e.target.value)}
+                  placeholder="0"
+                  min="0"
+                  max="100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Max Percentage */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Maksimal foiz
+                </label>
+                <input
+                  type="number"
+                  value={maxPercentage}
+                  onChange={(e) => setMaxPercentage(e.target.value)}
+                  placeholder="100"
+                  min="0"
+                  max="100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Filter Summary */}
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-sm text-gray-600">
+                Jami: <span className="font-semibold">{results.length}</span> natija |
+                Filtrlangan: <span className="font-semibold">{filteredResults.length}</span> natija
+              </p>
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* Results Table */}
         <Card>
           <CardHeader>
             <h2 className="text-xl font-semibold text-gray-900">Test natijalari</h2>
           </CardHeader>
           <CardBody>
-            {results.length === 0 ? (
-              <p className="text-gray-600 text-center py-8">Natijalar yo'q</p>
+            {filteredResults.length === 0 ? (
+              <p className="text-gray-600 text-center py-8">
+                {results.length === 0 ? "Natijalar yo'q" : "Filter bo'yicha natija topilmadi"}
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -137,7 +346,7 @@ export default function ResultsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {results.map((result, index) => (
+                    {filteredResults.map((result, index) => (
                       <tr key={result.id} className="border-b border-gray-100 hover:bg-gray-50">
                         <td className="py-3 px-4 text-sm text-gray-900">{index + 1}</td>
                         <td className="py-3 px-4 text-sm text-gray-900">
