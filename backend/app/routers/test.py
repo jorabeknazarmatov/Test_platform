@@ -98,7 +98,7 @@ def get_test_questions(
     # Random savollarni olish
     questions = TestService.get_random_questions(db, session.test_id, limit=20)
 
-    result = []
+    questions_list = []
     for question in questions:
         options = db.query(Option).filter(Option.question_id == question.id).all()
 
@@ -106,13 +106,22 @@ def get_test_questions(
         options_list = list(options)
         random.shuffle(options_list)
 
-        result.append({
+        questions_list.append({
             "id": question.id,
             "text": question.text,
             "options": [{"id": opt.id, "text": opt.text} for opt in options_list]
         })
 
-    logger.info(f"{len(result)} ta savol qaytarildi (variantlar aralashtirildi): session_id={session_id}")
+    # Test session, test va subject ma'lumotlarini qo'shish
+    result = {
+        "student_name": session.student.full_name,
+        "subject_name": session.test.subject.name,
+        "test_name": session.test.name,
+        "duration_minutes": session.test.duration_minutes,
+        "questions": questions_list
+    }
+
+    logger.info(f"{len(questions_list)} ta savol qaytarildi (variantlar aralashtirildi): session_id={session_id}")
     return result
 
 @router.post("/submit-answer")
