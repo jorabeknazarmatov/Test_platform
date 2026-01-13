@@ -16,6 +16,8 @@ export default function TestPage() {
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>({});
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [studentName, setStudentName] = useState('');
+  const [subjectName, setSubjectName] = useState('');
+  const [testName, setTestName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -57,10 +59,16 @@ export default function TestPage() {
   const loadQuestions = async (sid: number) => {
     try {
       const response = await testApi.getQuestions(sid);
-      setQuestions(response.data);
+      const data = response.data;
 
-      // Test vaqtini olish (masalan: 60 daqiqa = 3600 sekund)
-      const duration = 3600; // default 60 daqiqa
+      // Backend'dan kelgan ma'lumotlarni saqlash
+      setQuestions(data.questions);
+      setStudentName(data.student_name);
+      setSubjectName(data.subject_name);
+      setTestName(data.test_name);
+
+      // Test vaqtini olish (daqiqadan sekundga o'tkazish)
+      const duration = data.duration_minutes * 60;
       setTestDuration(duration);
       setTimeRemaining(duration);
     } catch (err: any) {
@@ -184,7 +192,7 @@ export default function TestPage() {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <div className="text-center flex-1">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Test</h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">{subjectName}</h1>
               <p className="text-gray-600">{studentName}</p>
             </div>
 
