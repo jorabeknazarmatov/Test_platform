@@ -1,49 +1,40 @@
-# Test Platformasi - Kollej O'quvchilari uchun Online Test Tizimi
+# Test Platform — Online Testing System for College Students
 
-Vollständiges Test-Management-System mit Admin-Panel und Student-Test-Interface.
+A full-featured test management system with an admin panel and student test interface.
 
-## 📋 Loyiha Haqida
+## 📋 About the Project
 
-Test Platformasi - bu kollej o'quvchilari uchun mo'ljallangan to'liq funksional online test tizimi. Admin panel orqali guruhlar, o'quvchilar, fanlar, mavzular va testlarni boshqarish, OTP orqali o'quvchilarga test sessiyalari berish va natijalarni Excel formatida eksport qilish imkoniyati mavjud.
+Test Platform is a complete online testing system designed for college students. It allows administrators to manage groups, students, subjects, topics, and tests through an admin panel — with OTP-based test session generation and Excel export for results.
 
-## 🏗 Texnologiyalar
+## 🏗 Tech Stack
 
 ### Backend:
-- **FastAPI** - Zamonaviy Python web framework
-- **PostgreSQL** - Ma'lumotlar bazasi
-- **SQLAlchemy** - ORM
-- **Pydantic** - Ma'lumot validatsiya
-- **openpyxl** - Excel fayllari bilan ishlash
+- **FastAPI** — Modern Python web framework
+- **PostgreSQL** — Database
+- **SQLAlchemy** — ORM
+- **Pydantic** — Data validation
+- **openpyxl** — Excel file handling
 
-### Frontend (Next.js versiyasi):
-- **Next.js 14+** - React framework (App Router)
-- **TypeScript** - Type-safe JavaScript
-- **Tailwind CSS** - Styling
-- **Framer Motion** - Animatsiyalar
-- **Axios** - HTTP client
-- **React Hook Form** - Form boshqaruv
-- **Zod** - Validatsiya
+### Frontend:
+- **React 19** — UI library
+- **TypeScript** — Type-safe JavaScript
+- **Vite** — Build tool
+- **Tailwind CSS** — Styling
+- **Zustand** — State management
+- **React Query** — Server state management
+- **React Router** — Routing
+- **Axios** — HTTP client
+- **Lucide React** — Icons
 
-### Frontend (Vite versiyasi - eski):
-- **React 19** - UI kutubxona
-- **TypeScript** - Type-safe JavaScript
-- **Vite** - Build tool
-- **Tailwind CSS** - Styling
-- **Zustand** - State management
-- **React Query** - Server state management
-- **React Router** - Routing
-- **Axios** - HTTP client
-- **Lucide React** - Icons
-
-## 📁 Loyiha Strukturasi
+## 📁 Project Structure
 
 ```
 Test_site/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py              # FastAPI ilova
-│   │   ├── database.py          # Database konfiguratsiya
-│   │   ├── models.py            # SQLAlchemy modellari
+│   │   ├── main.py              # FastAPI application
+│   │   ├── database.py          # Database configuration
+│   │   ├── models.py            # SQLAlchemy models
 │   │   ├── schemas.py           # Pydantic schemas
 │   │   └── routers/
 │   │       ├── admin.py         # Admin API
@@ -54,251 +45,172 @@ Test_site/
 └── frontend/
     ├── src/
     │   ├── api/                 # API services
-    │   │   ├── axios.ts
-    │   │   ├── admin.api.ts
-    │   │   ├── student.api.ts
-    │   │   └── test.api.ts
-    │   ├── components/          # UI komponentlar
-    │   │   └── common/
-    │   │       ├── Button.tsx
-    │   │       ├── Input.tsx
-    │   │       ├── Card.tsx
-    │   │       └── Loading.tsx
-    │   ├── pages/               # Sahifalar
-    │   │   ├── LandingPage.tsx
-    │   │   ├── admin/
-    │   │   │   ├── AdminLogin.tsx
-    │   │   │   ├── AdminDashboard.tsx
-    │   │   │   ├── GroupsPage.tsx
-    │   │   │   ├── SubjectsPage.tsx
-    │   │   │   ├── TestsPage.tsx
-    │   │   │   └── ResultsPage.tsx
-    │   │   └── student/
-    │   │       ├── StudentPage.tsx
-    │   │       ├── TestPage.tsx
-    │   │       └── ResultPage.tsx
+    │   ├── components/          # UI components
+    │   ├── pages/               # Pages
+    │   │   ├── admin/           # Admin panel pages
+    │   │   └── student/         # Student interface pages
     │   ├── store/               # Zustand stores
-    │   │   ├── authStore.ts
-    │   │   └── testStore.ts
     │   ├── types/               # TypeScript types
-    │   │   └── index.ts
-    │   ├── App.tsx              # Main app component
-    │   └── main.tsx             # Entry point
+    │   ├── App.tsx
+    │   └── main.tsx
     └── package.json
-
 ```
 
-## 🚀 O'rnatish va Ishga Tushirish
+## 🚀 Installation & Setup
 
-### 1. Backend O'rnatish
+### 1. Backend
 
 ```bash
-# Backend papkasiga o'tish
 cd backend
 
-# Virtual environment yaratish
 python -m venv venv
 
-# Virtual environment aktivlashtirish
 # Windows:
 venv\Scripts\activate
 # Linux/Mac:
 source venv/bin/activate
 
-# Dependencies o'rnatish
 pip install -r requirements.txt
 
-# PostgreSQL database yaratish
-# PostgreSQL da quyidagi commandani ishga tushiring:
+# Create PostgreSQL database:
 # CREATE DATABASE test_db;
 
-# .env fayl yaratish (ixtiyoriy)
-# DATABASE_URL=postgresql://postgres:password@localhost/test_db
-
-# Backend ishga tushirish
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Backend manzil: http://localhost:8000
-API Documentation: http://localhost:8000/docs
+Backend: http://localhost:8000  
+API Docs: http://localhost:8000/docs
 
-### 2. Frontend O'rnatish (Next.js versiyasi)
+### 2. Frontend
 
 ```bash
-# Frontend papkasiga o'tish
 cd frontend
 
-# Dependencies o'rnatish
 npm install
 
-# .env.local fayl yaratish
-# NEXT_PUBLIC_API_URL=http://localhost:8000
-
-# Development rejimida ishga tushirish
 npm run dev
-
-# Yoki production build
-npm run build
-npm start
 ```
 
-Frontend manzil: http://localhost:3000
-
-**Eslatma:** Next.js versiyasida minimal, professional dizayn, O'zbek tilidagi interfeys va Framer Motion animatsiyalari ishlatilgan.
+Frontend: http://localhost:5173
 
 ## 📡 API Endpoints
 
 ### Admin API (`/api/admin`)
 
-**Autentifikatsiya:** Barcha so'rovlarda `login` va `password` query parametrlari kerak.
+> All requests require `login` and `password` as query parameters.
 
-#### Guruhlar:
-- `POST /groups` - Yangi guruh yaratish
-- `GET /groups` - Barcha guruhlarni olish
-- `DELETE /groups/{id}` - Guruhni o'chirish
+#### Groups:
+- `POST /groups` — Create group
+- `GET /groups` — Get all groups
+- `DELETE /groups/{id}` — Delete group
 
-#### O'quvchilar:
-- `POST /students` - Yangi o'quvchi qo'shish
-- `GET /groups/{group_id}/students` - Guruh o'quvchilarini olish
-- `DELETE /students/{id}` - O'quvchini o'chirish
+#### Students:
+- `POST /students` — Add student
+- `GET /groups/{group_id}/students` — Get students by group
+- `DELETE /students/{id}` — Delete student
 
-#### Fanlar va Mavzular:
-- `POST /subjects` - Yangi fan qo'shish
-- `GET /subjects` - Barcha fanlarni olish
-- `POST /topics` - Yangi mavzu qo'shish
-- `GET /subjects/{subject_id}/topics` - Fan mavzularini olish
+#### Subjects & Topics:
+- `POST /subjects` — Add subject
+- `GET /subjects` — Get all subjects
+- `POST /topics` — Add topic
+- `GET /subjects/{subject_id}/topics` — Get topics by subject
 
-#### Testlar:
-- `POST /tests` - Yangi test yaratish
-- `GET /tests` - Barcha testlarni olish
-- `POST /import-tests` - Excel dan testlarni import qilish
+#### Tests:
+- `POST /tests` — Create test
+- `GET /tests` — Get all tests
+- `POST /import-tests` — Import tests from Excel
 
-#### OTP va Natijalar:
-- `POST /generate-otp` - O'quvchi uchun OTP generatsiya qilish
-- `GET /results` - Natijalarni olish
-- `GET /export-results` - Natijalarni Excel ga eksport qilish
+#### OTP & Results:
+- `POST /generate-otp` — Generate OTP for student
+- `GET /results` — Get results
+- `GET /export-results` — Export results to Excel
 
 ### Student API (`/api/student`)
-
-- `GET /groups` - Guruhlar ro'yxati
-- `GET /groups/{id}/students` - Guruh o'quvchilari
-- `GET /subjects` - Fanlar ro'yxati
+- `GET /groups` — List of groups
+- `GET /groups/{id}/students` — Students in group
+- `GET /subjects` — List of subjects
 
 ### Test API (`/api/test`)
+- `GET /session/{id}` — Test session info
+- `POST /verify-otp` — Verify OTP code
+- `GET /questions/{session_id}` — Get test questions
+- `POST /submit-answer` — Submit answer
+- `POST /finish-test/{session_id}` — Finish test
+- `GET /result/{session_id}` — Get result
 
-- `GET /session/{id}` - Test sessiyasi ma'lumoti
-- `POST /verify-otp` - OTP kodni tekshirish
-- `GET /questions/{session_id}` - Test savollarini olish
-- `POST /submit-answer` - Javobni yuborish
-- `POST /finish-test/{session_id}` - Testni yakunlash
-- `GET /result/{session_id}` - Natijani olish
+## 👨‍💼 Admin Panel
 
-## 👨‍💼 Admin Panel Funksiyalari
-
-### Kirish:
+### Credentials:
 - **Login:** admin
-- **Parol:** admin123
+- **Password:** admin123
 
-### Imkoniyatlar:
-1. **Guruhlar:** Guruhlar yaratish, ko'rish, o'chirish
-2. **Fanlar va Mavzular:** Fanlar va ularga tegishli mavzular boshqarish
-3. **Testlar:**
-   - Testlar yaratish (fan, davomiylik, mavzular)
-   - Excel dan testlarni import qilish
-   - OTP generatsiya qilish
-4. **Natijalar:**
-   - Barcha natijalarni ko'rish
-   - Filtrlar (guruh, o'quvchi, test)
-   - Excel ga eksport qilish
+### Features:
+1. **Groups** — Create, view, delete groups
+2. **Subjects & Topics** — Manage subjects and related topics
+3. **Tests** — Create tests, import from Excel, generate OTP codes
+4. **Results** — View all results with filters, export to Excel
 
-## 🎓 O'quvchi Interface
+## 🎓 Student Interface
 
-### Test Topshirish Jarayoni:
-1. Guruh va o'quvchini tanlash
-2. Sessiya ID va OTP kodni kiritish
-3. Test topshirish:
-   - Real-time timer
-   - Savollar orasida navigatsiya
-   - Javoblar avtomatik saqlanadi
-   - Savollarga belgi qo'yish
-4. Natijani ko'rish:
-   - To'g'ri/noto'g'ri javoblar soni
-   - Foiz va baho
-   - Vizual natija
+### Test Flow:
+1. Select group and student
+2. Enter session ID and OTP code
+3. Take the test:
+   - Real-time countdown timer
+   - Navigation between questions
+   - Auto-save answers
+   - Bookmark questions
+4. View results:
+   - Correct/incorrect answer count
+   - Percentage score and grade
+   - Visual result display
 
-## 🔒 Xavfsizlik
+## 🔒 Security
 
-- Admin panel login/password bilan himoyalangan
-- O'quvchilar uchun OTP autentifikatsiya
-- OTP kod 3 marta noto'g'ri kiritilganda 30 daqiqaga bloklanadi
-- Test sessiyalari muddati cheklangan
-- CORS konfiguratsiyasi
+- Admin panel protected with login/password
+- OTP authentication for students
+- Account blocked for 30 minutes after 3 failed OTP attempts
+- Test sessions have time limits
+- CORS configured
 
-## 📊 Ma'lumotlar Bazasi Sxemasi
+## 📊 Database Schema
 
-### Jadvallar:
-- `groups` - Guruhlar
-- `students` - O'quvchilar
-- `subjects` - Fanlar
-- `topics` - Mavzular
-- `tests` - Testlar
-- `test_topics` - Test va mavzular bog'lanishi
-- `questions` - Savollar
-- `question_options` - Javob variantlari
-- `test_sessions` - Test sessiyalari
-- `student_answers` - O'quvchi javoblari
-- `results` - Yakuniy natijalar
+| Table | Description |
+|-------|-------------|
+| `groups` | Student groups |
+| `students` | Students |
+| `subjects` | Subjects |
+| `topics` | Topics |
+| `tests` | Tests |
+| `test_topics` | Test-topic relations |
+| `questions` | Questions |
+| `question_options` | Answer options |
+| `test_sessions` | Test sessions |
+| `student_answers` | Student answers |
+| `results` | Final results |
 
-## 🛠 Development
+## 📝 Excel Import Format
 
-### Backend Test qilish:
-```bash
-# Database migratsiya (agar kerak bo'lsa)
-# Alembic yoki boshqa migration tool ishlatish mumkin
+- Sheet name = Subject name
+- Each row = 1 question
+- Format: `Question | Option A | Option B | Option C | Option D | Correct Answer | Topic Number`
 
-# Test mode ishga tushirish
-uvicorn app.main:app --reload
-```
+## ✅ Features
 
-### Frontend Test qilish:
-```bash
-# Development server
-npm run dev
+- Full CRUD operations
+- OTP authentication system
+- Real-time test timer
+- Auto-save answers
+- Excel import/export
+- Responsive design
+- Type-safe code (TypeScript)
+- Professional UI/UX
 
-# Type checking
-npm run build
+## 👨‍💻 Author
 
-# Linting
-npm run lint
-```
+**Turabek** — Full Stack Developer  
+[LinkedIn](#) · [GitHub](#)
 
-## 📝 Test Excel Format
-
-Excel fayldan testlarni import qilish uchun:
-- Sheet nomi = Fan nomi
-- Har bir qator = 1 ta savol
-- Format: Savol matn | A variant | B variant | C variant | D variant | To'g'ri javob | Mavzu raqami
-
-## 🎯 Xususiyatlar
-
-✅ To'liq CRUD operatsiyalar
-✅ OTP autentifikatsiya tizimi
-✅ Real-time test timer
-✅ Avtomatik javob saqlash
-✅ Excel import/export
-✅ Responsive dizayn
-✅ O'zbek tilida interface
-✅ Professional UI/UX
-✅ Type-safe kod (TypeScript)
-
-## 🐛 Bug Report va Yangi Funksiyalar
-
-Agar bug topsangiz yoki yangi funksiya taklif qilmoqchi bo'lsangiz, GitHub Issues orqali xabar bering.
-
-## 📄 Litsenziya
+## 📄 License
 
 MIT License
-
-## 👨‍💻 Muallif
-
-Turabek - Full Stack Developer
